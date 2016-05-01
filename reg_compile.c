@@ -78,12 +78,12 @@ void defineFunction(Symbol *fsym, AST *params, AST *body)
 	envp = 0;  /* reset */
 }
 
-void compileBlock(AST *local_vars,AST *statements)
+void compileBlock(AST *local_vars, AST *statements)
 {
 	int envp_save;
 
 	envp_save = envp;
-	for (  ; local_vars != NULL; local_vars = getNext(local_vars)) {
+	for ( ; local_vars != NULL; local_vars = getNext(local_vars)) {
 		Env[envp].var = getSymbol(getFirst(local_vars));
 		Env[envp].var_kind = VAR_LOCAL;
 		Env[envp].pos = local_var_pos++;
@@ -265,28 +265,26 @@ void compileFor(AST *init,AST *cond,AST *iter,AST *body)
 
 void compileStatement(AST *p)
 {
-	if (p == NULL) {
-		return;
-	}
+	if (p == NULL) return;
+
 	switch (p->op) {
 	case BLOCK_STATEMENT:
-		compileBlock(p->left,p->right);
+		compileBlock(p->left, p->right);
 		break;
 	case RETURN_STATEMENT:
 		compileReturn(p->left);
 		break;
 	case IF_STATEMENT:
-		compileIf(p->left,getNth(p->right,0),getNth(p->right,1));
+		compileIf(p->left, getNth(p->right, 0), getNth(p->right, 1));
 		break;
 	case WHILE_STATEMENT:
-		compileWhile(p->left,p->right);
+		compileWhile(p->left, p->right);
 		break;
 	case FOR_STATEMENT:
-		compileFor(getNth(p->left,0),getNth(p->left,1),getNth(p->left,2),
-		           p->right);
+		compileFor(getNth(p->left, 0), getNth(p->left, 1), getNth(p->left, 2), p->right);
 		break;
 	default:
-		compileExpr(-1,p);
+		compileExpr(-1, p);
 	}
 }
 

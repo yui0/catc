@@ -91,6 +91,6 @@ again:
 
 void yyerror()
 {
-	printf("syntax error!\n");
+	printf("syntax error near '%s'\n", yytext);
 	exit(1);
 }

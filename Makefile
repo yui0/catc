@@ -16,12 +16,12 @@ $(PROGRAM): $(OBJS)
 .c.o:
 	$(CC) $(CFLAGS) -c $<
 
-lex.yy.c: c.l
-	$(LEX) c.l
+lex.yy.c: clex.l
+	$(LEX) clex.l
 y.tab.c: cparser.y
 	$(YACC) cparser.y
-y.tab.o: cparser.y
-#y.tab.o: cparser.y lex.yy.c
+#y.tab.o: cparser.y
+y.tab.o: cparser.y lex.yy.c
 
 .PHONY: clean
 clean:

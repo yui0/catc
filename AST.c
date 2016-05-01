@@ -22,9 +22,9 @@ AST *makeStr(char *s)
 	return p;
 }
 
-
-AST *makeAST(enum code op,AST *left,AST *right)
+AST *makeAST(enum code op, AST *left, AST *right)
 {
+//	printf("[%d,%x,%x]\n",op,left,right);
 	AST *p;
 	p = (AST *)malloc(sizeof(AST));
 	p->op = op;
@@ -33,31 +33,31 @@ AST *makeAST(enum code op,AST *left,AST *right)
 	return p;
 }
 
-AST *getNth(AST *p,int nth)
+AST *getNth(AST *p, int nth)
 {
 	if (p->op != LIST) {
 		fprintf(stderr, "bad access to list\n");
 		exit(1);
 	}
 	if (nth > 0) {
-		return (getNth(p->right,nth-1));
+		return (getNth(p->right, nth-1));
 	} else {
 		return p->left;
 	}
 }
 
-AST *addLast(AST *l,AST *p)
+AST *addLast(AST *l, AST *p)
 {
 	AST *q;
 
 	if (l == NULL) {
-		return makeAST(LIST,p,NULL);
+		return makeAST(LIST, p, NULL);
 	}
 	q = l;
 	while (q->right != NULL) {
 		q = q->right;
 	}
-	q->right = makeAST(LIST,p,NULL);
+	q->right = makeAST(LIST, p, NULL);
 	return l;
 }
 
@@ -102,6 +102,7 @@ AST *makeSymbol(char *name)
 
 Symbol *getSymbol(AST *p)
 {
+	if (!p) fprintf(stderr, "AST is null at getSymbol!\n");
 	if (p->op != SYM) {
 		fprintf(stderr, "bad access to symbol\n");
 		exit(1);
@@ -110,43 +111,7 @@ Symbol *getSymbol(AST *p)
 	}
 }
 
-static char *code_name(enum code op);
-
-void printAST(AST *p)
-{
-	if (p == NULL) {
-		printf("()");
-		return;
-	}
-	switch (p->op) {
-	case NUM:
-		printf("%d",p->val);
-		break;
-	case SYM:
-		printf("'%s'",p->sym->name);
-		break;
-	case LIST:
-		printf("(LIST ");
-		while (p != NULL) {
-			printAST(p->left);
-			p = p->right;
-			if (p != NULL) {
-				printf(" ");
-			}
-		}
-		printf(")");
-		break;
-	default:
-		printf("(%s ",code_name(p->op));
-		printAST(p->left);
-		printf(" ");
-		printAST(p->right);
-		printf(")");
-	}
-	fflush(stdout);
-}
-
-static char *code_name(enum code op)
+char *code_name(enum code op)
 {
 	switch (op) {
 	case LIST:
@@ -188,4 +153,38 @@ static char *code_name(enum code op)
 	default:
 		return "???";
 	}
+}
+
+void printAST(AST *p)
+{
+	if (p == NULL) {
+		printf("()");
+		return;
+	}
+	switch (p->op) {
+	case NUM:
+		printf("%d",p->val);
+		break;
+	case SYM:
+		printf("'%s'",p->sym->name);
+		break;
+	case LIST:
+		printf("(LIST ");
+		while (p != NULL) {
+			printAST(p->left);
+			p = p->right;
+			if (p != NULL) {
+				printf(" ");
+			}
+		}
+		printf(")");
+		break;
+	default:
+		printf("(%s ",code_name(p->op));
+		printAST(p->left);
+		printf(" ");
+		printAST(p->right);
+		printf(")");
+	}
+	fflush(stdout);
 }
