@@ -4,46 +4,46 @@
 
 #define MAX_CODE 100
 
+extern FILE *yyout;
+
 struct _code {
 	int opcode;
-	int operand1,operand2,operand3;
+	int operand1, operand2, operand3;
 	char *s_operand;
 } Codes[MAX_CODE];
 
-int n_code;
-
 int isDarwin = 0;
-
 void checkSystem()
 {
 	struct utsname uts;
 	uname(&uts);
-	if (strcmp(uts.sysname,"Darwin") == 0) {
+	if (strcmp(uts.sysname, "Darwin") == 0) {
 		isDarwin = 1;
 	}
 	/* else Linux */
 }
 
+int n_code;
 void initGenCode()
 {
 	n_code = 0;
 	checkSystem();
 }
 
-void genCode1(int opcode,int operand1)
+void genCode1(int opcode, int operand1)
 {
 	Codes[n_code].operand1 = operand1;
 	Codes[n_code++].opcode = opcode;
 }
 
-void genCode2(int opcode,int operand1, int operand2)
+void genCode2(int opcode, int operand1, int operand2)
 {
 	Codes[n_code].operand1 = operand1;
 	Codes[n_code].operand2 = operand2;
 	Codes[n_code++].opcode = opcode;
 }
 
-void genCode3(int opcode,int operand1, int operand2, int operand3)
+void genCode3(int opcode, int operand1, int operand2, int operand3)
 {
 	Codes[n_code].operand1 = operand1;
 	Codes[n_code].operand2 = operand2;
@@ -51,7 +51,7 @@ void genCode3(int opcode,int operand1, int operand2, int operand3)
 	Codes[n_code++].opcode = opcode;
 }
 
-void genCodeS(int opcode,int operand1, int operand2, char *s)
+void genCodeS(int opcode, int operand1, int operand2, char *s)
 {
 	Codes[n_code].operand1 = operand1;
 	Codes[n_code].operand2 = operand2;
@@ -113,7 +113,7 @@ void saveReg(int reg)
 
 	for (int i=0; i < N_SAVE; i++) {
 		if (tmpRegSave[i] < 0) {
-			printf("\tmovl\t%s,%d(%%ebp)\n",tmpRegName[reg],TMP_OFF(reg));
+			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n",tmpRegName[reg],TMP_OFF(reg));
 			tmpRegSave[i] = tmpRegState[reg];
 			tmpRegState[reg] = -1;
 			return;
@@ -154,7 +154,7 @@ int useReg(int r)
 			rr = getReg(r);
 			tmpRegSave[i] = -1;
 			/* load into regsiter */
-			printf("\tmovl\t%d(%%ebp),%s\n",TMP_OFF(i),tmpRegName[rr]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",TMP_OFF(i),tmpRegName[rr]);
 			return rr;
 		}
 	}
@@ -180,19 +180,19 @@ void genFuncCode(char *entry_name, int n_local)
 	int ret_lab,l1,l2;
 	int frame_size;
 
-	/* function header */
-	puts("\t.text");       	             /* .text         */
-	puts("\t.align\t4");        	     /* .align 4      */
+	// function header
+	fprintf(yyout, "\t.text\n");
+	fprintf(yyout, "\t.align\t4\n");
 	if (isDarwin) {
-		printf("\t.globl\t_%s\n", entry_name);    /* .globl <name> */
-		printf("_%s:\n", entry_name);             /* <name>:              */
+		fprintf(yyout, "\t.globl\t_%s\n", entry_name);    /* .globl <name> */
+		fprintf(yyout, "_%s:\n", entry_name);             /* <name>:              */
 	} else {
-		printf("\t.globl\t%s\n", entry_name);    /* .globl <name> */
-		printf("\t.type\t%s,@function\n", entry_name);/* .type <name>,@function */
-		printf("%s:\n", entry_name);             /* <name>:              */
+		fprintf(yyout, "\t.globl\t%s\n", entry_name);    /* .globl <name> */
+		fprintf(yyout, "\t.type\t%s,@function\n", entry_name);/* .type <name>,@function */
+		fprintf(yyout, "%s:\n", entry_name);             /* <name>:              */
 	}
-	printf("\tpushl\t%%ebp\n");
-	printf("\tmovl\t%%esp,%%ebp\n");
+	fprintf(yyout, "\tpushl\t%%ebp\n");
+	fprintf(yyout, "\tmovl\t%%esp,%%ebp\n");
 
 	frame_size = -LOCAL_VAR_OFF(n_local);
 	ret_lab = label_counter++;
@@ -201,13 +201,13 @@ void genFuncCode(char *entry_name, int n_local)
 		frame_size = ((frame_size+16*MAX_ARGS+15)&(~15)) - 8;
 	}
 
-	printf("\tsubl\t$%d,%%esp\n",frame_size);
-	printf("\tmovl\t%%ebx,-4(%%ebp)\n");
+	fprintf(yyout, "\tsubl\t$%d,%%esp\n",frame_size);
+	fprintf(yyout, "\tmovl\t%%ebx,-4(%%ebp)\n");
 
 	initTmpReg();
 
 	for (i = 0; i < n_code; i++) {
-		/*debug*//* printf("%s %d %d %d\n",code_name(Codes[i].opcode),
+		/*debug*//* fprintf(yyout, "%s %d %d %d\n",code_name(Codes[i].opcode),
 		       Codes[i].operand1,Codes[i].operand2,Codes[i].operand3); */
 		opd1 = Codes[i].operand1;
 		opd2 = Codes[i].operand2;
@@ -218,81 +218,81 @@ void genFuncCode(char *entry_name, int n_local)
 		case LOADI:	// load int
 			if (opd1 < 0) break;
 			r = getReg(opd1);
-			printf("\tmovl\t$%d,%s\n", opd2, tmpRegName[r]);
+			fprintf(yyout, "\tmovl\t$%d,%s\n", opd2, tmpRegName[r]);
 			break;
 		case LOADS:	// load string label
 			if (opd1 < 0) break;
 			r = getReg(opd1);
-			printf("\tlea\t.LC%d,%s\n", opd2, tmpRegName[r]);
+			fprintf(yyout, "\tlea\t.LC%d,%s\n", opd2, tmpRegName[r]);
 			break;
 		case LOADA:	/* load arg */
 			if (opd1 < 0) {
 				break;
 			}
 			r = getReg(opd1);
-			printf("\tmovl\t%d(%%ebp),%s\n",ARG_OFF(opd2),tmpRegName[r]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",ARG_OFF(opd2),tmpRegName[r]);
 			break;
 		case LOADL:	/* load local */
 			if (opd1 < 0) {
 				break;
 			}
 			r = getReg(opd1);
-			printf("\tmovl\t%d(%%ebp),%s\n",LOCAL_VAR_OFF(opd2),tmpRegName[r]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",LOCAL_VAR_OFF(opd2),tmpRegName[r]);
 			break;
 		case STOREA:	/* store arg */
 			r = useReg(opd1);
 			freeReg(r);
-			printf("\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],ARG_OFF(opd2));
+			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],ARG_OFF(opd2));
 			break;
 		case STOREL:	/* store local */
 			r = useReg(opd1);
 			freeReg(r);
-			printf("\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],LOCAL_VAR_OFF(opd2));
+			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],LOCAL_VAR_OFF(opd2));
 			break;
 		case BEQ0:	/* conditional branch */
 			r = useReg(opd1);
 			freeReg(r);
-			printf("\tcmpl\t$0,%s\n",tmpRegName[r]);
-			printf("\tje\t.L%d\n",opd2);
+			fprintf(yyout, "\tcmpl\t$0,%s\n",tmpRegName[r]);
+			fprintf(yyout, "\tje\t.L%d\n",opd2);
 			break;
 		case LABEL:
-			printf(".L%d:\n",Codes[i].operand1);
+			fprintf(yyout, ".L%d:\n",Codes[i].operand1);
 			break;
 		case JUMP:
-			printf("\tjmp\t.L%d\n",Codes[i].operand1);
+			fprintf(yyout, "\tjmp\t.L%d\n",Codes[i].operand1);
 			break;
 
 		case CALL:
 			saveAllRegs();
 			if (isDarwin) {
-				printf("\tcall\t_%s\n",opds);
+				fprintf(yyout, "\tcall\t_%s\n",opds);
 			} else {
-				printf("\tcall\t%s\n",opds);
+				fprintf(yyout, "\tcall\t%s\n",opds);
 			}
 			if (opd1 < 0) {
 				break;
 			}
 			assignReg(opd1,REG_AX);
 			if (!isDarwin) {
-				printf("\tadd $%d,%%esp\n",opd2*4);
+				fprintf(yyout, "\tadd $%d,%%esp\n",opd2*4);
 			}
 			break;
 		case ARG:
 			r = useReg(opd1);
 			freeReg(r);
 			if (isDarwin) {
-				printf("\tmovl\t%s,%d(%%esp)\n",tmpRegName[r],opd2*4);
+				fprintf(yyout, "\tmovl\t%s,%d(%%esp)\n",tmpRegName[r],opd2*4);
 			} else {
-				printf("\tpushl\t%s\n",tmpRegName[r]);
+				fprintf(yyout, "\tpushl\t%s\n",tmpRegName[r]);
 			}
 			break;
 		case RET:
 			r = useReg(opd1);
 			freeReg(r);
 			if (r != REG_AX) {
-				printf("\tmovl\t%s,%%eax\n",tmpRegName[r]);
+				fprintf(yyout, "\tmovl\t%s,%%eax\n",tmpRegName[r]);
 			}
-			printf("\tjmp .L%d\n",ret_lab);
+			fprintf(yyout, "\tjmp .L%d\n",ret_lab);
 			break;
 
 		case ADD:
@@ -304,7 +304,7 @@ void genFuncCode(char *entry_name, int n_local)
 				break;
 			}
 			assignReg(opd1,r1);
-			printf("\taddl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\taddl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
 			break;
 		case SUB:
 			r1 = useReg(opd2);
@@ -315,7 +315,7 @@ void genFuncCode(char *entry_name, int n_local)
 				break;
 			}
 			assignReg(opd1,r1);
-			printf("\tsubl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\tsubl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
 			break;
 		case MUL:
 			r1 = useReg(opd2);
@@ -328,9 +328,9 @@ void genFuncCode(char *entry_name, int n_local)
 			assignReg(opd1,REG_AX);
 			saveReg(REG_DX);
 			if (r1 != REG_AX) {
-				printf("\tmovl %s,%s\n",tmpRegName[r1],tmpRegName[REG_AX]);
+				fprintf(yyout, "\tmovl %s,%s\n",tmpRegName[r1],tmpRegName[REG_AX]);
 			}
-			printf("\timull\t%s,%s\n",tmpRegName[r2],tmpRegName[REG_AX]);
+			fprintf(yyout, "\timull\t%s,%s\n",tmpRegName[r2],tmpRegName[REG_AX]);
 			break;
 		case LT:
 			r1 = useReg(opd2);
@@ -343,12 +343,12 @@ void genFuncCode(char *entry_name, int n_local)
 			r = getReg(opd1);
 			l1 = label_counter++;
 			l2 = label_counter++;
-			printf("\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
-			printf("\tjl .L%d\n",l1);
-			printf("\tmovl\t$0,%s\n",tmpRegName[r]);
-			printf("\tjmp .L%d\n",l2);
-			printf(".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
-			printf(".L%d:",l2);
+			fprintf(yyout, "\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\tjl .L%d\n",l1);
+			fprintf(yyout, "\tmovl\t$0,%s\n",tmpRegName[r]);
+			fprintf(yyout, "\tjmp .L%d\n",l2);
+			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
+			fprintf(yyout, ".L%d:",l2);
 			break;
 		case GT:
 			r1 = useReg(opd2);
@@ -361,39 +361,39 @@ void genFuncCode(char *entry_name, int n_local)
 			r = getReg(opd1);
 			l1 = label_counter++;
 			l2 = label_counter++;
-			printf("\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
-			printf("\tjg .L%d\n",l1);
-			printf("\tmovl\t$0,%s\n",tmpRegName[r]);
-			printf("\tjmp .L%d\n",l2);
-			printf(".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
-			printf(".L%d:",l2);
+			fprintf(yyout, "\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\tjg .L%d\n",l1);
+			fprintf(yyout, "\tmovl\t$0,%s\n",tmpRegName[r]);
+			fprintf(yyout, "\tjmp .L%d\n",l2);
+			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
+			fprintf(yyout, ".L%d:",l2);
 			break;
 
 		case PRINTLN:
 			r = useReg(opd1);
 			freeReg(r);
 			if (isDarwin) {
-				printf("\tmovl\t%s,4(%%esp)\n",tmpRegName[r]);
-				printf("\tlea\t.LC%d,%s\n",opd2, tmpRegName[r]);
-				printf("\tmovl\t%s,0(%%esp)\n",tmpRegName[r]);
+				fprintf(yyout, "\tmovl\t%s,4(%%esp)\n",tmpRegName[r]);
+				fprintf(yyout, "\tlea\t.LC%d,%s\n",opd2, tmpRegName[r]);
+				fprintf(yyout, "\tmovl\t%s,0(%%esp)\n",tmpRegName[r]);
 				saveAllRegs();
-				printf("\tcall\t_println\n");
+				fprintf(yyout, "\tcall\t_println\n");
 			} else {
-				printf("\tpushl\t%s\n",tmpRegName[r]);
-				printf("\tlea\t.LC%d,%s\n",opd2, tmpRegName[r]);
-				printf("\tpushl\t%s\n",tmpRegName[r]);
+				fprintf(yyout, "\tpushl\t%s\n",tmpRegName[r]);
+				fprintf(yyout, "\tlea\t.LC%d,%s\n",opd2, tmpRegName[r]);
+				fprintf(yyout, "\tpushl\t%s\n",tmpRegName[r]);
 				saveAllRegs();
-				printf("\tcall\tprintln\n");
-				printf("\taddl\t$8,%%esp\n");
+				fprintf(yyout, "\tcall\tprintln\n");
+				fprintf(yyout, "\taddl\t$8,%%esp\n");
 			}
 			break;
 		}
 	}
 
 	/* return sequence */
-	printf(".L%d:\tmovl\t-4(%%ebp), %%ebx\n",ret_lab);
-	printf("\tleave\n");
-	printf("\tret\n");
+	fprintf(yyout, ".L%d:\tmovl\t-4(%%ebp), %%ebx\n",ret_lab);
+	fprintf(yyout, "\tleave\n");
+	fprintf(yyout, "\tret\n");
 }
 
 int genString(char *s)
@@ -401,14 +401,14 @@ int genString(char *s)
 	int l;
 	l = label_counter++;
 	if (isDarwin) {
-		printf("\t.cstring\n");
-		printf(".LC%d:\n", l);
-		printf("\t.asciz \"%s\"\n", s);
+		fprintf(yyout, "\t.cstring\n");
+		fprintf(yyout, ".LC%d:\n", l);
+		fprintf(yyout, "\t.asciz \"%s\"\n", s);
 	} else {
-		printf("\t.section\t.rodata\n");
-		printf(".LC%d:\n", l);
-//		printf("\t.string \"%s\"\n", s);
-		printf("\t.string\t%s\n", s);
+		fprintf(yyout, "\t.section\t.rodata\n");
+		fprintf(yyout, ".LC%d:\n", l);
+//		fprintf(yyout, "\t.string \"%s\"\n", s);
+		fprintf(yyout, "\t.string\t%s\n", s);
 	}
 	return l;
 }

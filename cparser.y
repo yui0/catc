@@ -282,9 +282,40 @@ void yyerror(char *s)
 
 int main(int argc, char *argv[])
 {
-	yyin = fopen(argv[1], "r");
+	if (!strcmp(argv[1], "-p")) {
+		argv++;
+		argc = 1;
+		yyin = fopen(argv[1], "r");
+	}
+
+	char name[3][256];
+	if (argc>1) {
+		yyin = fopen(argv[1], "r");
+		if (argc>2) {
+			yyout = fopen(argv[2], "w");
+		} else {
+			sscanf(argv[1], "%[^.]]", name[0]);
+			strcat(name[1], name[0]);
+			strcat(name[1], ".o");
+			strcpy(name[2], name[0]);
+			strcat(name[0], ".asm");
+			yyout = fopen(name[0], "w");
+		}
+	}
+
 	yyparse();
-	fclose(yyin);
+
+	if (argc>1) {
+		fclose(yyout);
+		fclose(yyin);
+
+		char cmd[256];
+		snprintf(cmd, 256, "as %s -o %s", name[0], name[1]);
+		system(cmd);
+		snprintf(cmd, 256, "gcc %s -o %s", name[1], name[2]);
+		system(cmd);
+	}
+
 	return 0;
 }
 #else

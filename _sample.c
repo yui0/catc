@@ -1,6 +1,6 @@
 main()
 {
-	println("hello world %d", foo(100, 23));
+	printf("hello world\n100+23=%d\n", foo(100, 23));
 }
 
 foo(x, y)
