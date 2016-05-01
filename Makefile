@@ -25,4 +25,4 @@ y.tab.o: cparser.y lex.yy.c
 
 .PHONY: clean
 clean:
-	$(RM) $(PROGRAM) $(OBJS) lex.yy.c y.tab.[ch] y.output
+	$(RM) $(PROGRAM) $(OBJS) lex.yy.c y.tab.[ch] y.output *.o *.s

@@ -6,7 +6,7 @@ This is a simple tiny C Compiler using Lex & Yacc.
 
 	$ dnf install byacc flex
 	$ make
-	$ ./catc -p _hello.c
+	$ ./catc -S _hello.c
 		.section	.rodata
 	.LC0:
 		.string	"Hello! tiny c world!!\n"
@@ -23,17 +23,19 @@ This is a simple tiny C Compiler using Lex & Yacc.
 		pushl	%eax
 		call	printf
 		movl	$0,%eax
-		jmp .L1
-	.L1:	movl	-4(%ebp), %ebx
+		jmp	.L1
+	.L1:	movl	-4(%ebp),%ebx
 		leave
 		ret
-	$ ./catc -p _hello.c > _hello.asm
+	$ ./catc -S _hello.c > _hello.asm
 	$ as _hello.asm -o _hello.o
 	$ gcc _hello.o -o _hello
 	$ ./_hello
 	Hello! tiny c world!!
 	$ ./catc _sample.c
 	$ ./_sample
+	Hello world.
+	100+23=123
 
 ## Refrence
 - http://www.pwv.co.jp/~take/TakeWiki/index.php?FrontPage

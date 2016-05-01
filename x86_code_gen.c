@@ -226,40 +226,36 @@ void genFuncCode(char *entry_name, int n_local)
 			fprintf(yyout, "\tlea\t.LC%d,%s\n", opd2, tmpRegName[r]);
 			break;
 		case LOADA:	/* load arg */
-			if (opd1 < 0) {
-				break;
-			}
+			if (opd1 < 0) break;
 			r = getReg(opd1);
-			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",ARG_OFF(opd2),tmpRegName[r]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n", ARG_OFF(opd2), tmpRegName[r]);
 			break;
 		case LOADL:	/* load local */
-			if (opd1 < 0) {
-				break;
-			}
+			if (opd1 < 0) break;
 			r = getReg(opd1);
-			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",LOCAL_VAR_OFF(opd2),tmpRegName[r]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n", LOCAL_VAR_OFF(opd2), tmpRegName[r]);
 			break;
 		case STOREA:	/* store arg */
 			r = useReg(opd1);
 			freeReg(r);
-			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],ARG_OFF(opd2));
+			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n", tmpRegName[r], ARG_OFF(opd2));
 			break;
 		case STOREL:	/* store local */
 			r = useReg(opd1);
 			freeReg(r);
-			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n",tmpRegName[r],LOCAL_VAR_OFF(opd2));
+			fprintf(yyout, "\tmovl\t%s,%d(%%ebp)\n", tmpRegName[r], LOCAL_VAR_OFF(opd2));
 			break;
 		case BEQ0:	/* conditional branch */
 			r = useReg(opd1);
 			freeReg(r);
-			fprintf(yyout, "\tcmpl\t$0,%s\n",tmpRegName[r]);
-			fprintf(yyout, "\tje\t.L%d\n",opd2);
+			fprintf(yyout, "\tcmpl\t$0,%s\n", tmpRegName[r]);
+			fprintf(yyout, "\tje\t.L%d\n", opd2);
 			break;
 		case LABEL:
-			fprintf(yyout, ".L%d:\n",Codes[i].operand1);
+			fprintf(yyout, ".L%d:\n", Codes[i].operand1);
 			break;
 		case JUMP:
-			fprintf(yyout, "\tjmp\t.L%d\n",Codes[i].operand1);
+			fprintf(yyout, "\tjmp\t.L%d\n", Codes[i].operand1);
 			break;
 
 		case CALL:
@@ -274,7 +270,7 @@ void genFuncCode(char *entry_name, int n_local)
 			}
 			assignReg(opd1,REG_AX);
 			if (!isDarwin) {
-				fprintf(yyout, "\tadd $%d,%%esp\n",opd2*4);
+				fprintf(yyout, "\tadd\t$%d,%%esp\n",opd2*4);
 			}
 			break;
 		case ARG:
@@ -292,7 +288,7 @@ void genFuncCode(char *entry_name, int n_local)
 			if (r != REG_AX) {
 				fprintf(yyout, "\tmovl\t%s,%%eax\n",tmpRegName[r]);
 			}
-			fprintf(yyout, "\tjmp .L%d\n",ret_lab);
+			fprintf(yyout, "\tjmp\t.L%d\n",ret_lab);
 			break;
 
 		case ADD:
@@ -328,7 +324,7 @@ void genFuncCode(char *entry_name, int n_local)
 			assignReg(opd1,REG_AX);
 			saveReg(REG_DX);
 			if (r1 != REG_AX) {
-				fprintf(yyout, "\tmovl %s,%s\n",tmpRegName[r1],tmpRegName[REG_AX]);
+				fprintf(yyout, "\tmovl\t%s,%s\n",tmpRegName[r1],tmpRegName[REG_AX]);
 			}
 			fprintf(yyout, "\timull\t%s,%s\n",tmpRegName[r2],tmpRegName[REG_AX]);
 			break;
@@ -362,14 +358,14 @@ void genFuncCode(char *entry_name, int n_local)
 			l1 = label_counter++;
 			l2 = label_counter++;
 			fprintf(yyout, "\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
-			fprintf(yyout, "\tjg .L%d\n",l1);
+			fprintf(yyout, "\tjg\t.L%d\n",l1);
 			fprintf(yyout, "\tmovl\t$0,%s\n",tmpRegName[r]);
-			fprintf(yyout, "\tjmp .L%d\n",l2);
+			fprintf(yyout, "\tjmp\t.L%d\n",l2);
 			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
 			fprintf(yyout, ".L%d:",l2);
 			break;
 
-		case PRINTLN:
+/*		case PRINTLN:
 			r = useReg(opd1);
 			freeReg(r);
 			if (isDarwin) {
@@ -386,29 +382,37 @@ void genFuncCode(char *entry_name, int n_local)
 				fprintf(yyout, "\tcall\tprintln\n");
 				fprintf(yyout, "\taddl\t$8,%%esp\n");
 			}
-			break;
+			break;*/
 		}
 	}
 
 	/* return sequence */
-	fprintf(yyout, ".L%d:\tmovl\t-4(%%ebp), %%ebx\n",ret_lab);
+	fprintf(yyout, ".L%d:\tmovl\t-4(%%ebp),%%ebx\n",ret_lab);
 	fprintf(yyout, "\tleave\n");
 	fprintf(yyout, "\tret\n");
 }
 
 int genString(char *s)
 {
-	int l;
-	l = label_counter++;
+	int l = label_counter++;
 	if (isDarwin) {
 		fprintf(yyout, "\t.cstring\n");
 		fprintf(yyout, ".LC%d:\n", l);
-		fprintf(yyout, "\t.asciz \"%s\"\n", s);
+		fprintf(yyout, "\t.asciz\t\"%s\"\n", s);
 	} else {
 		fprintf(yyout, "\t.section\t.rodata\n");
 		fprintf(yyout, ".LC%d:\n", l);
 //		fprintf(yyout, "\t.string \"%s\"\n", s);
 		fprintf(yyout, "\t.string\t%s\n", s);
 	}
+	return l;
+}
+
+int genStatic(int a)
+{
+	int l = label_counter++;
+	fprintf(yyout, "\t.data\n");
+	fprintf(yyout, ".LC%d:", l);
+	fprintf(yyout, "\t.long\t%d\n", a);
 	return l;
 }

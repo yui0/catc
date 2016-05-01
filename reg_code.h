@@ -19,7 +19,6 @@
 #define RET	15	// RET r	return
 #define PRINTLN	16	// PRINTLN r,L	println function
 #define LABEL 	17	// LABEL L	label
-
 #define LOADS   18	// load string label
 
 #define LOADADDR 19

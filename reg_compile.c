@@ -102,14 +102,14 @@ void compileCallFunc(int target, Symbol *f,AST *args)
 	genCodeS(CALL,target,narg,f->name);
 }
 
-void compileExpr(int target, AST *p);
+/*void compileExpr(int target, AST *p);
 void printFunc(AST *args)
 {
 	int l = genString(getNth(args, 0)->str);
 	int r = tmp_counter++;
 	compileExpr(r, getNth(args, 1));
 	genCode2(PRINTLN, r, l);
-}
+}*/
 
 void compileExpr(int target, AST *p)
 {
@@ -177,12 +177,12 @@ void compileExpr(int target, AST *p)
 		compileCallFunc(target, getSymbol(p->left), p->right);
 		return;
 
-	case PRINTLN_OP:
+/*	case PRINTLN_OP:
 		if (target != -1) {
 			error("println has no value\n");
 		}
 		printFunc(p->left);
-		return;
+		return;*/
 
 	case GET_ARRAY_OP:
 	/* not implemented */
@@ -289,20 +289,19 @@ void compileStatement(AST *p)
 	}
 }
 
-/*
- * global variable
- */
+// global variable
 void declareVariable(Symbol *vsym, AST *init_value)
 {
 	/* not implemented */
+//	printf("declareVariable %s = %d\n", vsym->name, init_value->val);
+	genStatic(init_value->val);
 }
 
-/*
- * Array
- */
+// Array
 void declareArray(Symbol *a, AST *size)
 {
 	/* not implemented */
+	printf("declareArray is not implemented.\n");
 }
 
 #if 0

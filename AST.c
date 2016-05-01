@@ -24,7 +24,7 @@ AST *makeStr(char *s)
 
 AST *makeAST(enum code op, AST *left, AST *right)
 {
-//	printf("[%d,%x,%x]\n",op,left,right);
+	printf("[%d,%x,%x]\n",op,left,right);
 	AST *p;
 	p = (AST *)malloc(sizeof(AST));
 	p->op = op;

@@ -3,9 +3,10 @@ int yywrap()
 {
 	return 1;
 }
-
 void count();
 %}
+
+%option yylineno
 
 digit				[0-9]
 letter				[a-zA-Z_]

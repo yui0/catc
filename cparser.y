@@ -63,11 +63,11 @@ external_definition:
 	{ defineFunction(getSymbol($1), $2, $3); }
 	| type_specifier SYMBOL parameter_list block	// void func() ...
 	{ defineFunction(getSymbol($2), $3, $4); }
-	| type_specifier SYMBOL ';'
+	| type_specifier SYMBOL ';'			// int a; ...
 	{ declareVariable(getSymbol($2), NULL); }
-	| type_specifier SYMBOL '=' expr ';'
+	| type_specifier SYMBOL '=' expr ';'		// int a=0; ...
         { declareVariable(getSymbol($2), $4); }
-	| type_specifier SYMBOL '[' expr ']' ';'
+	| type_specifier SYMBOL '[' expr ']' ';'	// int a[10]; ...
 	{ declareArray(getSymbol($2), $4); }
 	;
 
@@ -175,6 +175,12 @@ symbol_list:
 	 { $$ = makeList1($1); }
 	| symbol_list ',' SYMBOL
 	 { $$ = addLast($1, $3); }
+	| type_specifier SYMBOL			// int a
+	 { $$ = makeList1($2); }
+	| symbol_list ',' type_specifier SYMBOL	// int a, int b
+	 { $$ = addLast($1, $4); }
+	| type_specifier SYMBOL '=' expr	// int a=0,
+	 { declareVariable(getSymbol($2), NULL); }
 	;
 
 statements:
@@ -245,11 +251,6 @@ arg_list:
 
 %%
 
-/*void error(char *msg)
-{
-	fprintf(stderr, "compiler error: %s", msg);
-	exit(1);
-}*/
 #include <stdarg.h>
 void error(char *fmt, ...)
 {
@@ -282,7 +283,7 @@ void yyerror(char *s)
 
 int main(int argc, char *argv[])
 {
-	if (!strcmp(argv[1], "-p")) {
+	if (!strcmp(argv[1], "-S")) {
 		argv++;
 		argc = 1;
 		yyin = fopen(argv[1], "r");
@@ -295,10 +296,11 @@ int main(int argc, char *argv[])
 			yyout = fopen(argv[2], "w");
 		} else {
 			sscanf(argv[1], "%[^.]]", name[0]);
-			strcat(name[1], name[0]);
+			strcpy(name[1], name[0]);
 			strcat(name[1], ".o");
 			strcpy(name[2], name[0]);
-			strcat(name[0], ".asm");
+			//strcat(name[0], ".asm");
+			strcat(name[0], ".s");	// gas
 			yyout = fopen(name[0], "w");
 		}
 	}
@@ -310,9 +312,10 @@ int main(int argc, char *argv[])
 		fclose(yyin);
 
 		char cmd[256];
-		snprintf(cmd, 256, "as %s -o %s", name[0], name[1]);
-		system(cmd);
-		snprintf(cmd, 256, "gcc %s -o %s", name[1], name[2]);
+		//snprintf(cmd, 256, "as %s -o %s", name[0], name[1]);
+		//system(cmd);
+		//snprintf(cmd, 256, "gcc %s -o %s", name[1], name[2]);
+		snprintf(cmd, 256, "gcc %s -o %s", name[0], name[2]);
 		system(cmd);
 	}
 
