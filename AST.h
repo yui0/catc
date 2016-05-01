@@ -72,4 +72,5 @@ void defineFunction(Symbol *fsym,AST *params,AST *body);
 void declareVariable(Symbol *vsym,AST *init_value);
 void declareArray(Symbol *asym,AST *size);
 
-void error(char *msg);
+//void error(char *msg);
+void error(char *fmt, ...);

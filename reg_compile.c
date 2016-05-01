@@ -105,44 +105,45 @@ void compileCallFunc(int target, Symbol *f,AST *args)
 void compileExpr(int target, AST *p);
 void printFunc(AST *args)
 {
-	int l, r;
-
-	l = genString(getNth(args, 0)->str);
-	r = tmp_counter++;
+	int l = genString(getNth(args, 0)->str);
+	int r = tmp_counter++;
 	compileExpr(r, getNth(args, 1));
 	genCode2(PRINTLN, r, l);
 }
 
 void compileExpr(int target, AST *p)
 {
-	int r1,r2;
+	if (!p) return;
 
-	if (p == NULL) {
-		return;
-	}
-
+	int r1, r2;
 	switch (p->op) {
 	case NUM:
-		genCode2(LOADI,target,p->val);
+		genCode2(LOADI, target, p->val);
+		return;
+	case STR:
+		{
+		/*int l =*/ genString(p->str);
+		genCode2(LOADS, target, p->val);
+		}
 		return;
 	case SYM:
-		compileLoadVar(target,getSymbol(p));
+		compileLoadVar(target, getSymbol(p));
 		return;
 	case EQ_OP:
 		if (target != -1) {
-			error("assign has no value");
+			error("assign has no value\n");
 		}
 		r1 = tmp_counter++;
-		compileExpr(r1,p->right);
-		compileStoreVar(getSymbol(p->left),r1);
+		compileExpr(r1, p->right);
+		compileStoreVar(getSymbol(p->left), r1);
 		return;
 
 	case PLUS_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
-		compileExpr(r1,p->left);
-		compileExpr(r2,p->right);
-		genCode3(ADD,target,r1,r2);
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(ADD, target, r1, r2);
 		return;
 	case MINUS_OP:
 		r1 = tmp_counter++;
@@ -173,12 +174,12 @@ void compileExpr(int target, AST *p)
 		genCode3(GT,target,r1,r2);
 		return;
 	case CALL_OP:
-		compileCallFunc(target,getSymbol(p->left),p->right);
+		compileCallFunc(target, getSymbol(p->left), p->right);
 		return;
 
 	case PRINTLN_OP:
 		if (target != -1) {
-			error("println has no value");
+			error("println has no value\n");
 		}
 		printFunc(p->left);
 		return;
@@ -189,7 +190,7 @@ void compileExpr(int target, AST *p)
 	/* not implemented */
 
 	default:
-		error("unknown operater/statement");
+		error("unknown operater/statement %d\n", p->op);
 	}
 }
 

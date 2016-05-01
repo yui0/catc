@@ -61,6 +61,8 @@ external_definitions:
 external_definition:
 	  SYMBOL parameter_list block  /* fucntion definition */
 	{ defineFunction(getSymbol($1), $2, $3); }
+	| type_specifier SYMBOL parameter_list block	// void func() ...
+	{ defineFunction(getSymbol($2), $3, $4); }
 	| type_specifier SYMBOL ';'
 	{ declareVariable(getSymbol($2), NULL); }
 	| type_specifier SYMBOL '=' expr ';'
@@ -230,7 +232,7 @@ primary_expr:
 	 { $$ = makeAST(CALL_OP, $1, NULL); }
         | '(' expr ')'
          { $$ = $2; }
-	| PRINTLN  '(' arg_list ')'
+	| PRINTLN '(' arg_list ')'
 	 { $$ = makeAST(PRINTLN_OP, $3, NULL); }
 	;
 
@@ -242,6 +244,21 @@ arg_list:
 	;
 
 %%
+
+/*void error(char *msg)
+{
+	fprintf(stderr, "compiler error: %s", msg);
+	exit(1);
+}*/
+#include <stdarg.h>
+void error(char *fmt, ...)
+{
+	va_list argp;
+	va_start(argp, fmt);
+	vfprintf(stderr, fmt, argp);
+	va_end(argp);
+	exit(1);
+}
 
 #if 1
 #include "lex.yy.c"
@@ -262,20 +279,20 @@ void yyerror(char *s)
 	fflush(stdout);
 	fprintf(stderr, "*** %d: %s near '%s'\n", yylineno, s, yytext);
 }
-#else
-#include "clex.c"
-#endif
-
-void error(char *msg)
-{
-	fprintf(stderr, "compiler error: %s", msg);
-	exit(1);
-}
 
 int main(int argc, char *argv[])
 {
-//	yyin = fopen(argv[1], "r");
+	yyin = fopen(argv[1], "r");
 	yyparse();
-//	fclose(yyin);
+	fclose(yyin);
 	return 0;
 }
+#else
+
+#include "clex.c"
+int main(int argc, char *argv[])
+{
+	yyparse();
+	return 0;
+}
+#endif

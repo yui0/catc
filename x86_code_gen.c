@@ -66,9 +66,9 @@ void genCodeS(int opcode,int operand1, int operand2, char *s)
 #define N_REG 4
 #define N_SAVE 4
 
-#define TMP_OFF(i) 	-((i+1)+1)*4
-#define LOCAL_VAR_OFF(i) 	-(N_SAVE+1+(i+1))*4
-#define ARG_OFF(i)	((i)+2)*4
+#define TMP_OFF(i) 		-((i+1)+1)*4
+#define LOCAL_VAR_OFF(i)	-(N_SAVE+1+(i+1))*4
+#define ARG_OFF(i)		((i)+2)*4
 
 #define REG_AX 0
 #define REG_BX 1
@@ -80,14 +80,6 @@ void genCodeS(int opcode,int operand1, int operand2, char *s)
 char *tmpRegName[N_REG] = { "%eax", "%ebx", "%ecx", "%edx" };
 int tmpRegState[N_REG];
 int tmpRegSave[N_SAVE];
-
-void initTmpReg();
-int getReg(int r);
-void assignReg(int r, int reg);
-int useReg(int r);
-void freeReg(int reg);
-void saveReg(int reg);
-void saveAllRegs();
 
 /*
  * sample register allocation
@@ -106,22 +98,42 @@ void initTmpReg()
 /* getReg: get free register */
 int getReg(int r)
 {
-	int i;
-	for (i = 0; i < N_REG; i++) {
+	for (int i=0; i < N_REG; i++) {
 		if (tmpRegState[i] < 0) {
 			tmpRegState[i] = r;
 			return i;
 		}
 	}
-	error("no temp reg");
+	error("no temp reg\n");
+}
+
+void saveReg(int reg)
+{
+	if (tmpRegState[reg] < 0) return;
+
+	for (int i=0; i < N_SAVE; i++) {
+		if (tmpRegSave[i] < 0) {
+			printf("\tmovl\t%s,%d(%%ebp)\n",tmpRegName[reg],TMP_OFF(reg));
+			tmpRegSave[i] = tmpRegState[reg];
+			tmpRegState[reg] = -1;
+			return;
+		}
+	}
+	error("no temp save\n");
+}
+
+void saveAllRegs()
+{
+	for (int i=0; i < N_REG; i++) {
+		saveReg(i);
+	}
 }
 
 /* assign r to reg */
 void assignReg(int r, int reg)
 {
-	if (tmpRegState[reg] == r) {
-		return;
-	}
+	if (tmpRegState[reg] == r) return;
+
 	saveReg(reg);
 	tmpRegState[reg] = r;
 }
@@ -129,7 +141,7 @@ void assignReg(int r, int reg)
 /* load r into reg */
 int useReg(int r)
 {
-	int i,rr;
+	int i, rr;
 
 	for (i = 0; i < N_REG; i++) {
 		if (tmpRegState[i] == r) {
@@ -146,38 +158,12 @@ int useReg(int r)
 			return rr;
 		}
 	}
-	error("reg is not found");
+	error("reg is not found\n");
 }
 
 void freeReg(int reg)
 {
 	tmpRegState[reg] = -1;
-}
-
-void saveReg(int reg)
-{
-	int i;
-
-	if (tmpRegState[reg] < 0) {
-		return;
-	}
-	for (i = 0; i < N_SAVE; i++) {
-		if (tmpRegSave[i] < 0) {
-			printf("\tmovl\t%s,%d(%%ebp)\n",tmpRegName[reg],TMP_OFF(reg));
-			tmpRegSave[i] = tmpRegState[reg];
-			tmpRegState[reg] = -1;
-			return;
-		}
-	}
-	error("no temp save");
-}
-
-void saveAllRegs()
-{
-	int i;
-	for (i = 0; i < N_REG; i++) {
-		saveReg(i);
-	}
 }
 
 /*
@@ -229,12 +215,15 @@ void genFuncCode(char *entry_name, int n_local)
 		opds = Codes[i].s_operand;
 
 		switch (Codes[i].opcode) {
-		case LOADI:
-			if (opd1 < 0) {
-				break;
-			}
+		case LOADI:	// load int
+			if (opd1 < 0) break;
 			r = getReg(opd1);
-			printf("\tmovl\t$%d,%s\n",opd2,tmpRegName[r]);
+			printf("\tmovl\t$%d,%s\n", opd2, tmpRegName[r]);
+			break;
+		case LOADS:	// load string label
+			if (opd1 < 0) break;
+			r = getReg(opd1);
+			printf("\tlea\t.LC%d,%s\n", opd2, tmpRegName[r]);
 			break;
 		case LOADA:	/* load arg */
 			if (opd1 < 0) {
@@ -413,17 +402,13 @@ int genString(char *s)
 	l = label_counter++;
 	if (isDarwin) {
 		printf("\t.cstring\n");
-		printf(".LC%d:\n",l);
-		printf("\t.asciz \"%s\"\n",s);
+		printf(".LC%d:\n", l);
+		printf("\t.asciz \"%s\"\n", s);
 	} else {
 		printf("\t.section\t.rodata\n");
-		printf(".LC%d:\n",l);
-		printf("\t.string \"%s\"\n",s);
+		printf(".LC%d:\n", l);
+//		printf("\t.string \"%s\"\n", s);
+		printf("\t.string\t%s\n", s);
 	}
 	return l;
 }
-
-
-
-
-
