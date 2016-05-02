@@ -10,7 +10,7 @@ enum code {
 	NUM,
 	STR,
 	SYM,
-	EQ_OP,
+	EX_EQ,
 	PLUS_OP,
 	MINUS_OP,
 	MUL_OP,
@@ -19,7 +19,7 @@ enum code {
 	GET_ARRAY_OP,
 	SET_ARRAY_OP,
 	CALL_OP,
-	PRINTLN_OP,
+//	PRINTLN_OP,
 	IF_STATEMENT,
 	BLOCK_STATEMENT,
 	RETURN_STATEMENT,
@@ -31,7 +31,7 @@ typedef struct abstract_syntax_tree {
 	enum code op;
 	int val;
 	struct symbol *sym;
-	struct abstract_syntax_tree *left,*right;
+	struct abstract_syntax_tree *left, *right;
 	char *str;
 } AST;
 

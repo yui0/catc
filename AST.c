@@ -24,7 +24,7 @@ AST *makeStr(char *s)
 
 AST *makeAST(enum code op, AST *left, AST *right)
 {
-	printf("[%d,%x,%x]\n",op,left,right);
+//	printf("[%d,%x,%x]\n",op,left,right);
 	AST *p;
 	p = (AST *)malloc(sizeof(AST));
 	p->op = op;
@@ -120,8 +120,8 @@ char *code_name(enum code op)
 		return "NUM";
 	case SYM:
 		return "SYM";
-	case EQ_OP:
-		return "EQ_OP";
+	case EX_EQ:
+		return "EX_EQ";
 	case PLUS_OP:
 		return "PLUS_OP";
 	case MINUS_OP:
@@ -138,8 +138,8 @@ char *code_name(enum code op)
 		return "SET_ARRAY_OP";
 	case CALL_OP:
 		return "CALL_OP";
-	case PRINTLN_OP:
-		return "PRINTLN_OP";
+//	case PRINTLN_OP:
+//		return "PRINTLN_OP";
 	case IF_STATEMENT:
 		return "IF_STATEMENT";
 	case BLOCK_STATEMENT:

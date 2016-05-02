@@ -121,15 +121,13 @@ void compileExpr(int target, AST *p)
 		genCode2(LOADI, target, p->val);
 		return;
 	case STR:
-		{
-		/*int l =*/ genString(p->str);
-		genCode2(LOADS, target, p->val);
-		}
+		r1 = genString(p->str);
+		genCode2(LOADS, target, r1);
 		return;
 	case SYM:
 		compileLoadVar(target, getSymbol(p));
 		return;
-	case EQ_OP:
+	case EX_EQ:
 		if (target != -1) {
 			error("assign has no value\n");
 		}
@@ -148,30 +146,30 @@ void compileExpr(int target, AST *p)
 	case MINUS_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
-		compileExpr(r1,p->left);
-		compileExpr(r2,p->right);
-		genCode3(SUB,target,r1,r2);
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(SUB, target, r1, r2);
 		return;
 	case MUL_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
-		compileExpr(r1,p->left);
-		compileExpr(r2,p->right);
-		genCode3(MUL,target,r1,r2);
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(MUL, target, r1, r2);
 		return;
 	case LT_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
-		compileExpr(r1,p->left);
-		compileExpr(r2,p->right);
-		genCode3(LT,target,r1,r2);
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(LT, target, r1, r2);
 		return;
 	case GT_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
-		compileExpr(r1,p->left);
-		compileExpr(r2,p->right);
-		genCode3(GT,target,r1,r2);
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(GT, target, r1, r2);
 		return;
 	case CALL_OP:
 		compileCallFunc(target, getSymbol(p->left), p->right);
@@ -199,11 +197,11 @@ void compileReturn(AST *expr)
 	int r;
 	if (expr != NULL) {
 		r = tmp_counter++;
-		compileExpr(r,expr);
+		compileExpr(r, expr);
 	} else {
 		r = -1;
 	}
-	genCode1(RET,r);
+	genCode1(RET, r);
 }
 
 int compileArgs(AST *args, int i)

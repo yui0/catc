@@ -29,7 +29,13 @@
 
 %{
 #include <stdio.h>
+#include <stdlib.h>
 #include "AST.h"
+//#define DEBUG
+#ifdef DEBUG
+#define YYERROR_VERBOSE 1
+#define YYDEBUG 1
+#endif
 %}
 
 %union {
@@ -86,7 +92,26 @@ local_vars:
 	  /* NULL */ { $$ = NULL; }
 	| type_specifier symbol_list ';'
 	  { $$ = $2; }
+/*	| type_specifier pointer symbol_list ';'	// char *p; ...
+	  { $$ = $3; }
+	| type_specifier pointer symbol_list '=' expr ';'	// char *p; ...
+	  { $$ = $3; }
+	| type_specifier pointer symbol_list '=' string ';'	// char *p; ...
+	  { $$ = $3; }*/
 	;
+
+/*declaration_specifiers
+	: storage_class_specifier declaration_specifiers
+	| storage_class_specifier
+	| type_specifier declaration_specifiers
+	| type_specifier
+	| type_qualifier declaration_specifiers
+	| type_qualifier
+	| function_specifier declaration_specifiers
+	| function_specifier
+	| alignment_specifier declaration_specifiers
+	| alignment_specifier
+	;*/
 
 type_specifier
 	: VOID
@@ -170,17 +195,38 @@ atomic_type_specifier
 	: ATOMIC '(' type_name ')'
 	;
 
+pointer
+	: '*' type_qualifier_list pointer
+	| '*' type_qualifier_list
+	| '*' pointer
+	| '*'
+	;
+
+type_qualifier_list
+	: type_qualifier
+	| type_qualifier_list type_qualifier
+	;
+
+type_qualifier
+	: CONST
+	| RESTRICT
+	| VOLATILE
+	| ATOMIC
+	;
+
 symbol_list: 
 	  SYMBOL
 	 { $$ = makeList1($1); }
 	| symbol_list ',' SYMBOL
 	 { $$ = addLast($1, $3); }
-	| type_specifier SYMBOL			// int a
+	| type_specifier SYMBOL			// int a (global)
 	 { $$ = makeList1($2); }
 	| symbol_list ',' type_specifier SYMBOL	// int a, int b
 	 { $$ = addLast($1, $4); }
-	| type_specifier SYMBOL '=' expr	// int a=0,
-	 { declareVariable(getSymbol($2), NULL); }
+//	| type_specifier SYMBOL '=' expr	// int a=0,
+//	 { declareVariable(getSymbol($2), NULL); }
+	| SYMBOL '=' expr			// a=0,
+	 { $$ = makeList1($1);/*declareVariable(getSymbol($1), NULL);*/ }
 	;
 
 statements:
@@ -211,7 +257,7 @@ statement:
 
 expr: 	 primary_expr
 	| SYMBOL '=' expr
-	 { $$ = makeAST(EQ_OP, $1, $3); }
+	 { $$ = makeAST(EX_EQ, $1, $3); }
 	| SYMBOL '[' expr ']' '=' expr
 	 { $$ = makeAST(SET_ARRAY_OP, makeList2($1, $3), $6); }
 	| expr '+' expr
@@ -238,8 +284,8 @@ primary_expr:
 	 { $$ = makeAST(CALL_OP, $1, NULL); }
         | '(' expr ')'
          { $$ = $2; }
-	| PRINTLN '(' arg_list ')'
-	 { $$ = makeAST(PRINTLN_OP, $3, NULL); }
+//	| PRINTLN '(' arg_list ')'
+//	 { $$ = makeAST(PRINTLN_OP, $3, NULL); }
 	;
 
 arg_list:
@@ -283,6 +329,9 @@ void yyerror(char *s)
 
 int main(int argc, char *argv[])
 {
+#ifdef DEBUG
+	yydebug = 1;
+#endif
 	if (!strcmp(argv[1], "-S")) {
 		argv++;
 		argc = 1;
@@ -305,7 +354,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	yyparse();
+	if (yyparse()) {
+		fprintf(stderr, "*** fatal error!\n");
+		return 1;
+	}
 
 	if (argc>1) {
 		fclose(yyout);

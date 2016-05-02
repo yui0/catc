@@ -268,7 +268,7 @@ void genFuncCode(char *entry_name, int n_local)
 			if (opd1 < 0) {
 				break;
 			}
-			assignReg(opd1,REG_AX);
+			assignReg(opd1, REG_AX);
 			if (!isDarwin) {
 				fprintf(yyout, "\tadd\t$%d,%%esp\n",opd2*4);
 			}
@@ -401,7 +401,7 @@ int genString(char *s)
 		fprintf(yyout, "\t.asciz\t\"%s\"\n", s);
 	} else {
 		fprintf(yyout, "\t.section\t.rodata\n");
-		fprintf(yyout, ".LC%d:\n", l);
+		fprintf(yyout, ".LC%d:", l);
 //		fprintf(yyout, "\t.string \"%s\"\n", s);
 		fprintf(yyout, "\t.string\t%s\n", s);
 	}
