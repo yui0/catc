@@ -6,8 +6,7 @@ int n_symbols = 0;
 
 AST *makeNum(int val)
 {
-	AST *p;
-	p = (AST *)malloc(sizeof(AST));
+	AST *p = (AST *)malloc(sizeof(AST));
 	p->op = NUM;
 	p->val = val;
 	return p;
@@ -15,8 +14,7 @@ AST *makeNum(int val)
 
 AST *makeStr(char *s)
 {
-	AST *p;
-	p = (AST *)malloc(sizeof(AST));
+	AST *p = (AST *)malloc(sizeof(AST));
 	p->op = STR;
 	p->str = s;
 	return p;
@@ -25,11 +23,10 @@ AST *makeStr(char *s)
 AST *makeAST(enum code op, AST *left, AST *right)
 {
 //	printf("[%d,%x,%x]\n",op,left,right);
-	AST *p;
-	p = (AST *)malloc(sizeof(AST));
+	AST *p = (AST *)malloc(sizeof(AST));
 	p->op = op;
-	p->right = right;
 	p->left = left;
+	p->right = right;
 	return p;
 }
 
@@ -74,9 +71,7 @@ AST *getNext(AST *p)
 Symbol *lookupSymbol(char *name)
 {
 	int i;
-	Symbol *sp;
-
-	sp = NULL;
+	Symbol *sp = NULL;
 	for (i = 0; i < n_symbols; i++) {
 		if (strcmp(SymbolTable[i].name,name) == 0) {
 			sp = &SymbolTable[i];
@@ -92,9 +87,8 @@ Symbol *lookupSymbol(char *name)
 
 AST *makeSymbol(char *name)
 {
-	AST *p;
-
-	p = (AST *)malloc(sizeof(AST));
+	//printf("SYM:[%s]\n", name);
+	AST *p = (AST *)malloc(sizeof(AST));
 	p->op = SYM;
 	p->sym = lookupSymbol(name);
 	return p;
@@ -111,6 +105,7 @@ Symbol *getSymbol(AST *p)
 	}
 }
 
+// for debug
 char *code_name(enum code op)
 {
 	switch (op) {
@@ -118,6 +113,8 @@ char *code_name(enum code op)
 		return "LIST";
 	case NUM:
 		return "NUM";
+	case STR:
+		return "STR";
 	case SYM:
 		return "SYM";
 	case EX_EQ:
@@ -154,7 +151,6 @@ char *code_name(enum code op)
 		return "???";
 	}
 }
-
 void printAST(AST *p)
 {
 	if (p == NULL) {
@@ -163,10 +159,10 @@ void printAST(AST *p)
 	}
 	switch (p->op) {
 	case NUM:
-		printf("%d",p->val);
+		printf("%d", p->val);
 		break;
 	case SYM:
-		printf("'%s'",p->sym->name);
+		printf("'%s'", p->sym->name);
 		break;
 	case LIST:
 		printf("(LIST ");
@@ -180,7 +176,7 @@ void printAST(AST *p)
 		printf(")");
 		break;
 	default:
-		printf("(%s ",code_name(p->op));
+		printf("(%s ", code_name(p->op));
 		printAST(p->left);
 		printf(" ");
 		printAST(p->right);

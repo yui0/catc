@@ -12,9 +12,6 @@ typedef struct env {
 	int pos;
 } Environment;
 
-extern int tmp_counter;
-
-
 int envp = 0;
 Environment Env[MAX_ENV];
 
@@ -22,17 +19,16 @@ int label_counter = 0;
 int local_var_pos;
 int tmp_counter = 0;
 
-void compileStoreVar(Symbol *var,int r)
+void compileStoreVar(Symbol *var, int r)
 {
-	int i;
-	for (i = envp-1; i >= 0; i--) {
+	for (int i=envp-1; i>=0; i--) {
 		if (Env[i].var == var) {
 			switch (Env[i].var_kind) {
 			case VAR_ARG:
-				genCode2(STOREA,r,Env[i].pos);
+				genCode2(STOREA, r, Env[i].pos);
 				return;
 			case VAR_LOCAL:
-				genCode2(STOREL,r,Env[i].pos);
+				genCode2(STOREL, r, Env[i].pos);
 				return;
 			}
 		}
@@ -42,15 +38,14 @@ void compileStoreVar(Symbol *var,int r)
 
 void compileLoadVar(int target, Symbol *var)
 {
-	int i;
-	for (i = envp-1; i >= 0; i--) {
+	for (int i=envp-1; i>=0; i--) {
 		if (Env[i].var == var) {
 			switch (Env[i].var_kind) {
 			case VAR_ARG:
-				genCode2(LOADA,target,Env[i].pos);
+				genCode2(LOADA, target, Env[i].pos);
 				return;
 			case VAR_LOCAL:
-				genCode2(LOADL,target,Env[i].pos);
+				genCode2(LOADL, target, Env[i].pos);
 				return;
 			}
 		}
@@ -74,16 +69,21 @@ void defineFunction(Symbol *fsym, AST *params, AST *body)
 		envp++;
 	}
 	compileStatement(body);
-	genFuncCode(fsym->name,local_var_pos);
+	genFuncCode(fsym->name, local_var_pos);
 	envp = 0;  /* reset */
 }
 
 void compileBlock(AST *local_vars, AST *statements)
 {
-	int envp_save;
-
-	envp_save = envp;
+//	AST *ast = local_vars;
+	int envp_save = envp;
 	for ( ; local_vars != NULL; local_vars = getNext(local_vars)) {
+		AST *a = getFirst(local_vars);
+		if (a->op != SYM) {	// int a = 10;
+			compileStatement(a);
+			continue;
+		}
+
 		Env[envp].var = getSymbol(getFirst(local_vars));
 		Env[envp].var_kind = VAR_LOCAL;
 		Env[envp].pos = local_var_pos++;
@@ -92,6 +92,11 @@ void compileBlock(AST *local_vars, AST *statements)
 	for ( ; statements != NULL; statements = getNext(statements)) {
 		compileStatement(getFirst(statements));
 	}
+/*	for ( ; ast != NULL; ast = getNext(ast)) {
+		AST *a = getFirst(ast);
+		if (a->op == SYM) continue;
+		compileStatement(getFirst(ast));
+	}*/
 	envp = envp_save;
 }
 
@@ -122,7 +127,7 @@ void compileExpr(int target, AST *p)
 		return;
 	case STR:
 		r1 = genString(p->str);
-		genCode2(LOADS, target, r1);
+		genCode2(LOADS, target, r1/*.LC[0-9]*/);
 		return;
 	case SYM:
 		compileLoadVar(target, getSymbol(p));
@@ -249,12 +254,12 @@ void compileWhile(AST *cond,AST *body)
 	l2 = label_counter++;
 	r = tmp_counter++;
 
-	genCode1(LABEL,l1);
-	compileExpr(r,cond);
-	genCode2(BEQ0,r,l2);
+	genCode1(LABEL, l1);
+	compileExpr(r, cond);
+	genCode2(BEQ0, r, l2);
 	compileStatement(body);
-	genCode1(JUMP,l1);
-	genCode1(LABEL,l2);
+	genCode1(JUMP, l1);
+	genCode1(LABEL, l2);
 }
 
 void compileFor(AST *init,AST *cond,AST *iter,AST *body)

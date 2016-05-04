@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/utsname.h>
 #include "reg_code.h"
 
@@ -105,6 +106,7 @@ int getReg(int r)
 		}
 	}
 	error("no temp reg\n");
+	return 0;
 }
 
 void saveReg(int reg)
@@ -154,11 +156,12 @@ int useReg(int r)
 			rr = getReg(r);
 			tmpRegSave[i] = -1;
 			/* load into regsiter */
-			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n",TMP_OFF(i),tmpRegName[rr]);
+			fprintf(yyout, "\tmovl\t%d(%%ebp),%s\n", TMP_OFF(i), tmpRegName[rr]);
 			return rr;
 		}
 	}
 	error("reg is not found\n");
+	return 0;
 }
 
 void freeReg(int reg)
@@ -184,10 +187,10 @@ void genFuncCode(char *entry_name, int n_local)
 	fprintf(yyout, "\t.text\n");
 	fprintf(yyout, "\t.align\t4\n");
 	if (isDarwin) {
-		fprintf(yyout, "\t.globl\t_%s\n", entry_name);    /* .globl <name> */
+		fprintf(yyout, "\t.global\t_%s\n", entry_name);    /* .global <name> */
 		fprintf(yyout, "_%s:\n", entry_name);             /* <name>:              */
 	} else {
-		fprintf(yyout, "\t.globl\t%s\n", entry_name);    /* .globl <name> */
+		fprintf(yyout, "\t.global\t%s\n", entry_name);    /* .global <name> */
 		fprintf(yyout, "\t.type\t%s,@function\n", entry_name);/* .type <name>,@function */
 		fprintf(yyout, "%s:\n", entry_name);             /* <name>:              */
 	}
@@ -387,9 +390,9 @@ void genFuncCode(char *entry_name, int n_local)
 	}
 
 	/* return sequence */
-	fprintf(yyout, ".L%d:\tmovl\t-4(%%ebp),%%ebx\n",ret_lab);
+	fprintf(yyout, ".L%d:\tmovl\t-4(%%ebp),%%ebx\n", ret_lab);
 	fprintf(yyout, "\tleave\n");
-	fprintf(yyout, "\tret\n");
+	fprintf(yyout, "\tret\n\n");
 }
 
 int genString(char *s)

@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "AST.h"
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
 #define YYERROR_VERBOSE 1
 #define YYDEBUG 1
@@ -45,7 +45,8 @@
 %right '='
 %left '<' '>'
 %left '+' '-'
-%left '*'
+%left '*' '/'
+%right '!'
 
 %type <val> parameter_list block local_vars symbol_list 
 %type <val> statements statement expr primary_expr arg_list
@@ -65,15 +66,15 @@ external_definitions:
 	;
 
 external_definition:
-	  SYMBOL parameter_list block  /* fucntion definition */
+	  SYMBOL parameter_list block			// fucntion definition
 	{ defineFunction(getSymbol($1), $2, $3); }
 	| type_specifier SYMBOL parameter_list block	// void func() ...
 	{ defineFunction(getSymbol($2), $3, $4); }
-	| type_specifier SYMBOL ';'			// int a; ...
+	| type_specifier SYMBOL ';'			// [global] int a; ...
 	{ declareVariable(getSymbol($2), NULL); }
-	| type_specifier SYMBOL '=' expr ';'		// int a=0; ...
+	| type_specifier SYMBOL '=' expr ';'		// [global] int a=0; ...
         { declareVariable(getSymbol($2), $4); }
-	| type_specifier SYMBOL '[' expr ']' ';'	// int a[10]; ...
+	| type_specifier SYMBOL '[' expr ']' ';'	// [global] int a[10]; ...
 	{ declareArray(getSymbol($2), $4); }
 	;
 
@@ -85,13 +86,17 @@ parameter_list:
 	;
 
 block: '{' local_vars statements '}'
-	{ $$ = makeAST(BLOCK_STATEMENT, $2, $3); }
+//	{ $$ = addLast($2, $3); $$ = makeAST(BLOCK_STATEMENT, $$, 0); printAST($$); }
+//	{ $$ = makeAST(BLOCK_STATEMENT, makeList2($2, $3), 0); printAST($$); }
+	{ $$ = makeAST(BLOCK_STATEMENT, $2, $3); printAST($$); }
 	;
 
 local_vars: 
 	  /* NULL */ { $$ = NULL; }
 	| type_specifier symbol_list ';'
 	  { $$ = $2; }
+//	| type_specifier symbol_list '=' expr ';'
+//	  { $$ = makeAST(BLOCK_STATEMENT, $2, makeAST(EX_EQ, $2, $4)); }
 /*	| type_specifier pointer symbol_list ';'	// char *p; ...
 	  { $$ = $3; }
 	| type_specifier pointer symbol_list '=' expr ';'	// char *p; ...
@@ -214,19 +219,23 @@ type_qualifier
 	| ATOMIC
 	;
 
-symbol_list: 
+symbol_list:
 	  SYMBOL
 	 { $$ = makeList1($1); }
 	| symbol_list ',' SYMBOL
 	 { $$ = addLast($1, $3); }
-	| type_specifier SYMBOL			// int a (global)
+	| type_specifier SYMBOL			// int func()
 	 { $$ = makeList1($2); }
-	| symbol_list ',' type_specifier SYMBOL	// int a, int b
+	| symbol_list ',' type_specifier SYMBOL	// func(int a, int b)
 	 { $$ = addLast($1, $4); }
-//	| type_specifier SYMBOL '=' expr	// int a=0,
-//	 { declareVariable(getSymbol($2), NULL); }
-	| SYMBOL '=' expr			// a=0,
-	 { $$ = makeList1($1);/*declareVariable(getSymbol($1), NULL);*/ }
+//	| type_specifier pointer SYMBOL			// int a
+//	 { printf("+\n");$$ = makeList1($3); }
+//	| expr			// [local] int a=0;
+//	 { printf("+\n");$$ = makeList1($1); }
+	| SYMBOL '=' expr			// [local] int a=0;
+	 { $$ = makeAST(EX_EQ, $1, $3); $$ = makeList2($1, $$); }
+//	| pointer SYMBOL '=' expr			// a=0,
+//	 { printf("+\n");$$ = makeList1($2); }
 	;
 
 statements:
@@ -253,6 +262,8 @@ statement:
 	 { $$ = makeAST(WHILE_STATEMENT, $3, $5); }
 	| FOR '(' expr ';' expr ';' expr ')' statement
 	 { $$ = makeAST(FOR_STATEMENT, makeList3($3, $5, $7), $9); }
+//	| type_specifier symbol_list '=' expr ';'
+//	 { $$ = makeAST(EX_EQ, $2, $4); }
 	;
 
 expr: 	 primary_expr
@@ -284,6 +295,8 @@ primary_expr:
 	 { $$ = makeAST(CALL_OP, $1, NULL); }
         | '(' expr ')'
          { $$ = $2; }
+	| SYMBOL '=' primary_expr
+	 { $$ = makeAST(EX_EQ, $1, $3); }
 //	| PRINTLN '(' arg_list ')'
 //	 { $$ = makeAST(PRINTLN_OP, $3, NULL); }
 	;

@@ -12,7 +12,7 @@ This is a simple tiny C Compiler using Lex & Yacc.
 		.string	"Hello! tiny c world!!\n"
 		.text
 		.align	4
-		.globl	main
+		.global	main
 		.type	main,@function
 	main:
 		pushl	%ebp
