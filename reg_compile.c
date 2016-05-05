@@ -98,11 +98,10 @@ void compileBlock(AST *local_vars, AST *statements)
 	envp = envp_save;
 }
 
-void compileCallFunc(int target, Symbol *f,AST *args)
+void compileCallFunc(int target, Symbol *f, AST *args)
 {
-	int narg;
-	narg = compileArgs(args,0);
-	genCodeS(CALL,target,narg,f->name);
+	int narg = compileArgs(args, 0);
+	genCodeS(CALL, target, narg, f->name);
 }
 
 /*void compileExpr(int target, AST *p);
@@ -209,13 +208,13 @@ void compileReturn(AST *expr)
 
 int compileArgs(AST *args, int i)
 {
-	int r,n;
+	int r, n;
 
 	if (args != NULL) {
-		n = compileArgs(getNext(args),i+1);
+		n = compileArgs(getNext(args), i+1);
 		r = tmp_counter++;
-		compileExpr(r,getFirst(args));
-		genCode2(ARG,r,i);
+		compileExpr(r, getFirst(args));
+		genCode2(ARG, r, i);
 	} else {
 		return 0;
 	}
@@ -224,22 +223,22 @@ int compileArgs(AST *args, int i)
 
 void compileIf(AST *cond, AST *then_part, AST *else_part)
 {
-	int l1,l2;
+	int l1, l2;
 	int r;
 
 	r = tmp_counter++;
-	compileExpr(r,cond);
+	compileExpr(r, cond);
 	l1 = label_counter++;
-	genCode2(BEQ0,r,l1);
+	genCode2(BEQ0, r, l1);
 	compileStatement(then_part);
 	if (else_part != NULL) {
 		l2 = label_counter++;
-		genCode1(JUMP,l2);
-		genCode1(LABEL,l1);
+		genCode1(JUMP, l2);
+		genCode1(LABEL, l1);
 		compileStatement(else_part);
-		genCode1(LABEL,l2);
+		genCode1(LABEL, l2);
 	} else {
-		genCode1(LABEL,l1);
+		genCode1(LABEL, l1);
 	}
 }
 

@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "AST.h"
-//#define DEBUG
 #ifdef DEBUG
 #define YYERROR_VERBOSE 1
 #define YYDEBUG 1
@@ -140,8 +139,6 @@ multiplicative_expression
 	  { $$ = makeAST(MUL_OP, $1, $3); }
 	| multiplicative_expression '/' cast_expression
 	| multiplicative_expression '%' cast_expression
-//	| multiplicative_expression '=' cast_expression	//!!!
-//	  { $$ = makeAST(EX_EQ, $1, $3);printf("!!!\n"); }
 	;
 
 additive_expression
@@ -165,14 +162,13 @@ relational_expression
 	| relational_expression '>' shift_expression
 	  { $$ = makeAST(GT_OP, $1, $3); }
 	| relational_expression LE_OP shift_expression
+	  { $$ = makeAST(LE_OP, $1, $3); }
 	| relational_expression GE_OP shift_expression
+	  { $$ = makeAST(GE_OP, $1, $3); }
 	;
 
 equality_expression
 	: relational_expression
-//	  { $$ = makeAST(EX_EQ, 0, $1);printf("!!!\n"); }
-//	| equality_expression '=' multiplicative_expression
-//	  { $$ = makeAST(EX_EQ, $1, $3); }
 	| equality_expression EQ_OP relational_expression
 	| equality_expression NE_OP relational_expression
 	;
@@ -225,7 +221,6 @@ assignment_operator
 	| AND_ASSIGN
 	| XOR_ASSIGN
 	| OR_ASSIGN
-//	: '='	//!!!
 	;
 
 expression
@@ -261,14 +256,15 @@ declaration_specifiers
 
 init_declarator_list
 	: init_declarator
-	  { $$ = makeList1($1);/*printf("[%s]\n",$1->sym->name);*/ }
+	  { $$ = addList($1);/*printf("[%s]\n",$1->sym->name);*//*printf("[%x]\n",$1->right);*/ }
 	| init_declarator_list ',' init_declarator
 	  { $$ = addLast($1, $3);/*printf("[%s]\n",$3->sym->name);*/ }
 	;
 
 init_declarator
 	: declarator '=' initializer
-//	  { $$ = makeAST(EX_EQ, $1, $3); }
+	  { $$ = makeList1($1); $$ = addLast($$, makeAST(EX_EQ, $1, $3)); }
+//	  { $$ = addLast($1, makeAST(EX_EQ, $1, $3)); printf("![%x,%x]!\n",$1,$1->right->left); }
 	| declarator
 	;
 
@@ -527,12 +523,13 @@ labeled_statement
 compound_statement
 	: '{' '}'
 	| '{'  block_item_list '}'
-	  { $$ = makeAST(BLOCK_STATEMENT, $2, 0); printAST($$); /*printf("\n");*/ }
+	  { $$ = makeAST(BLOCK_STATEMENT, $2, 0); printAST($$); }
 	;
 
 block_item_list
 	: block_item
-	  { if ($1->op!=LIST) $$ = makeList1($1); else $$ = $1; }	// declaration is LIST
+	  { $$ = addList($1); }	// declaration is LIST
+//	  { if ($1->op!=LIST) $$ = makeList1($1); else $$ = $1; }	// declaration is LIST
 	| block_item_list block_item
 	  { $$ = addLast($1, $2); }
 	;
@@ -606,10 +603,12 @@ declaration_list
 #include <stdarg.h>
 void error(char *fmt, ...)
 {
+	fprintf(stderr, "\033[1m\033[31m");
 	va_list argp;
 	va_start(argp, fmt);
 	vfprintf(stderr, fmt, argp);
 	va_end(argp);
+	fprintf(stderr, "\033[0m");
 	exit(1);
 }
 
@@ -630,7 +629,9 @@ yymark()
 void yyerror(char *s)
 {
 	fflush(stdout);
+	fprintf(stderr, "\033[1m\033[31m");
 	fprintf(stderr, "*** %d: %s near '%s'\n", yylineno, s, yytext);
+	fprintf(stderr, "\033[0m");
 }
 
 int main(int argc, char *argv[])

@@ -48,7 +48,7 @@ char *code_name(enum code op)
 		return "???";
 	}
 }
-void printAST(AST *p)
+void _printAST(AST *p)
 {
 	if (p == NULL) {
 		printf("()");
@@ -67,7 +67,7 @@ void printAST(AST *p)
 	case LIST:
 		printf("(LIST ");
 		while (p != NULL) {
-			printAST(p->left);
+			_printAST(p->left);
 			p = p->right;
 			if (p != NULL) {
 				printf(" ");
@@ -77,15 +77,21 @@ void printAST(AST *p)
 		break;
 	default:
 		printf("(%s ", code_name(p->op));
-		printAST(p->left);
+		_printAST(p->left);
 		printf(" ");
-		printAST(p->right);
+		_printAST(p->right);
 		printf(")");
 	}
 	fflush(stdout);
 }
+void printAST(AST *p)
+{
+	printf("\033[1m\033[35m");
+	_printAST(p);
+	printf("\033[0m\n");
+}
 #else
-char *code_name(enum code op) {}
+char *code_name(enum code op) { return "-"; }
 void printAST(AST *p) {}
 #endif
 
@@ -135,12 +141,11 @@ AST *getNth(AST *p, int nth)
 
 AST *addLast(AST *l, AST *p)
 {
-	AST *q;
-
 	if (l == NULL) {
 		return makeAST(LIST, p, NULL);
 	}
-	q = l;
+
+	AST *q = l;
 	while (q->right != NULL) {
 		q = q->right;
 	}
@@ -151,7 +156,7 @@ AST *addLast(AST *l, AST *p)
 AST *getNext(AST *p)
 {
 	if (p->op != LIST) {
-		fprintf(stderr, "bad access to list\n  ");
+		fprintf(stderr, "bad access to list\n");
 		printAST(p);
 		printf("\n");
 		exit(1);

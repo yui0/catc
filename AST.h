@@ -2,6 +2,8 @@
 #include <ctype.h>
 #include <string.h>
 
+//#define DEBUG
+
 #define FALSE 0
 #define TRUE 1
 
@@ -48,8 +50,6 @@ typedef struct symbol {
 extern Symbol SymbolTable[];
 extern int n_symbols;
 
-void ASTPrint(AST *p);
-
 AST *makeSymbol(char *name);
 Symbol *lookupSymbol(char *name);
 Symbol *getSymbol(AST *p);
@@ -66,6 +66,7 @@ AST *addLast(AST *l, AST *p);
 #define makeList1(x1) makeAST(LIST, x1, NULL)
 #define makeList2(x1, x2) makeAST(LIST, x1, makeAST(LIST, x2, NULL))
 #define makeList3(x1, x2, x3) makeAST(LIST, x1, makeAST(LIST, x2, makeAST(LIST, x3, NULL)))
+#define addList(x1) ((x1->op!=LIST) ? makeList1(x1) : x1)
 
 /* prototype for interface from parser to interpreter/compiler */
 void defineFunction(Symbol *fsym, AST *params,AST *body);
