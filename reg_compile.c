@@ -33,7 +33,7 @@ void compileStoreVar(Symbol *var, int r)
 			}
 		}
 	}
-	error("undefined variable\n");
+	error("undefined variable '%s'\n", var->name);
 }
 
 void compileLoadVar(int target, Symbol *var)
@@ -50,17 +50,15 @@ void compileLoadVar(int target, Symbol *var)
 			}
 		}
 	}
-	error("undefined variable\n");
+	error("undefined variable '%s'\n", var->name);
 }
 
 void compileStatement(AST *p);
 void defineFunction(Symbol *fsym, AST *params, AST *body)
 {
-	int param_pos;
-
 	initGenCode();
 	envp = 0;
-	param_pos = 0;
+	int param_pos = 0;
 	local_var_pos = 0;
 	for ( ; params != NULL; params = getNext(params)) {
 		Env[envp].var = getSymbol(getFirst(params));

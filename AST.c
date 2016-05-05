@@ -1,110 +1,7 @@
 #include <stdlib.h>
 #include "AST.h"
 
-Symbol SymbolTable[MAX_SYMBOLS];
-int n_symbols = 0;
-
-AST *makeNum(int val)
-{
-	AST *p = (AST *)malloc(sizeof(AST));
-	p->op = NUM;
-	p->val = val;
-	return p;
-}
-
-AST *makeStr(char *s)
-{
-	AST *p = (AST *)malloc(sizeof(AST));
-	p->op = STR;
-	p->str = s;
-	return p;
-}
-
-AST *makeAST(enum code op, AST *left, AST *right)
-{
-//	printf("[%d,%x,%x]\n",op,left,right);
-	AST *p = (AST *)malloc(sizeof(AST));
-	p->op = op;
-	p->left = left;
-	p->right = right;
-	return p;
-}
-
-AST *getNth(AST *p, int nth)
-{
-	if (p->op != LIST) {
-		fprintf(stderr, "bad access to list\n");
-		exit(1);
-	}
-	if (nth > 0) {
-		return (getNth(p->right, nth-1));
-	} else {
-		return p->left;
-	}
-}
-
-AST *addLast(AST *l, AST *p)
-{
-	AST *q;
-
-	if (l == NULL) {
-		return makeAST(LIST, p, NULL);
-	}
-	q = l;
-	while (q->right != NULL) {
-		q = q->right;
-	}
-	q->right = makeAST(LIST, p, NULL);
-	return l;
-}
-
-AST *getNext(AST *p)
-{
-	if (p->op != LIST) {
-		fprintf(stderr, "bad access to list\n");
-		exit(1);
-	} else {
-		return p->right;
-	}
-}
-
-Symbol *lookupSymbol(char *name)
-{
-	int i;
-	Symbol *sp = NULL;
-	for (i = 0; i < n_symbols; i++) {
-		if (strcmp(SymbolTable[i].name,name) == 0) {
-			sp = &SymbolTable[i];
-			break;
-		}
-	}
-	if (sp == NULL) {
-		sp = &SymbolTable[n_symbols++];
-		sp->name = strdup(name);
-	}
-	return sp;
-}
-
-AST *makeSymbol(char *name)
-{
-	//printf("SYM:[%s]\n", name);
-	AST *p = (AST *)malloc(sizeof(AST));
-	p->op = SYM;
-	p->sym = lookupSymbol(name);
-	return p;
-}
-
-Symbol *getSymbol(AST *p)
-{
-	if (!p) fprintf(stderr, "AST is null at getSymbol!\n");
-	if (p->op != SYM) {
-		fprintf(stderr, "bad access to symbol\n");
-		exit(1);
-	} else {
-		return p->sym;
-	}
-}
-
+#ifdef DEBUG
 // for debug
 char *code_name(enum code op)
 {
@@ -161,6 +58,9 @@ void printAST(AST *p)
 	case NUM:
 		printf("%d", p->val);
 		break;
+	case STR:
+		printf("'%s'", p->str);
+		break;
 	case SYM:
 		printf("'%s'", p->sym->name);
 		break;
@@ -183,4 +83,117 @@ void printAST(AST *p)
 		printf(")");
 	}
 	fflush(stdout);
+}
+#else
+char *code_name(enum code op) {}
+void printAST(AST *p) {}
+#endif
+
+Symbol SymbolTable[MAX_SYMBOLS];
+int n_symbols = 0;
+
+AST *makeNum(int val)
+{
+	AST *p = (AST *)malloc(sizeof(AST));
+	p->op = NUM;
+	p->val = val;
+	return p;
+}
+
+AST *makeStr(char *s)
+{
+	AST *p = (AST *)malloc(sizeof(AST));
+	p->op = STR;
+	p->str = s;
+	return p;
+}
+
+AST *makeAST(enum code op, AST *left, AST *right)
+{
+//	printf("[%d,%x,%x]\n",op,left,right);
+	AST *p = (AST *)malloc(sizeof(AST));
+	p->op = op;
+	p->left = left;
+	p->right = right;
+	return p;
+}
+
+AST *getNth(AST *p, int nth)
+{
+	if (p->op != LIST) {
+		fprintf(stderr, "bad access to list %d\n", nth);
+		printAST(p);
+		printf("\n");
+		exit(1);
+	}
+	if (nth > 0) {
+		return (getNth(p->right, nth-1));
+	} else {
+		return p->left;
+	}
+}
+
+AST *addLast(AST *l, AST *p)
+{
+	AST *q;
+
+	if (l == NULL) {
+		return makeAST(LIST, p, NULL);
+	}
+	q = l;
+	while (q->right != NULL) {
+		q = q->right;
+	}
+	q->right = makeAST(LIST, p, NULL);
+	return l;
+}
+
+AST *getNext(AST *p)
+{
+	if (p->op != LIST) {
+		fprintf(stderr, "bad access to list\n  ");
+		printAST(p);
+		printf("\n");
+		exit(1);
+	} else {
+		return p->right;
+	}
+}
+
+Symbol *lookupSymbol(char *name)
+{
+	Symbol *sp = NULL;
+	for (int i=0; i < n_symbols; i++) {
+		if (strcmp(SymbolTable[i].name, name) == 0) {
+			sp = &SymbolTable[i];
+			break;
+		}
+	}
+	if (sp == NULL) {
+		sp = &SymbolTable[n_symbols++];
+		sp->name = strdup(name);
+	}
+	return sp;
+}
+
+AST *makeSymbol(char *name)
+{
+	//printf("SYM:[%s]\n", name);
+	AST *p = (AST *)malloc(sizeof(AST));
+	p->op = SYM;
+	p->sym = lookupSymbol(name);
+	return p;
+}
+
+Symbol *getSymbol(AST *p)
+{
+	if (!p) fprintf(stderr, "AST is null at getSymbol!\n");
+	if (p->op != SYM) {
+		fprintf(stderr, "bad access to symbol\n");
+		printAST(p);
+		printf("\n");
+		exit(1);
+	} else {
+		return p->sym;
+	}
 }

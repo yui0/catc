@@ -12,5 +12,5 @@ echo -----
 ./test/test02
 echo -----
 
-rm ./test/*.o
+#rm ./test/*.o
 

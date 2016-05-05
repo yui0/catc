@@ -1,3 +1,36 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include "AST.h"
+//#define DEBUG
+#ifdef DEBUG
+#define YYERROR_VERBOSE 1
+#define YYDEBUG 1
+#endif
+%}
+
+%union {
+	AST *val;
+}
+
+%right '='
+%left '<' '>'
+%left '+' '-'
+%left '*' '/'
+%right '!'
+
+%type <val> declarator init_declarator init_declarator_list initializer
+%type <val> declaration declaration_list parameter_declaration declaration_specifiers
+%type <val> statement compound_statement jump_statement iteration_statement
+%type <val> expression_statement selection_statement
+%type <val> direct_declarator block_item_list block_item
+%type <val> identifier_list parameter_type_list
+%type <val> expression postfix_expression argument_expression_list assignment_expression
+%type <val> multiplicative_expression additive_expression cast_expression shift_expression
+%type <val> equality_expression relational_expression unary_expression
+%type <val> IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
+
+
 %token	IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -15,97 +48,205 @@
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-
-%token NUMBER
-%token SYMBOL
-%token STRING
-%token VAR
-%token IF
-%token ELSE
-%token RETURN
-%token WHILE
-%token FOR
-%token PRINTLN
-
-%{
-#include <stdio.h>
-#include <stdlib.h>
-#include "AST.h"
-#define DEBUG
-#ifdef DEBUG
-#define YYERROR_VERBOSE 1
-#define YYDEBUG 1
-#endif
-%}
-
-%union {
-    AST *val;
-}
-
-%right '='
-%left '<' '>'
-%left '+' '-'
-%left '*' '/'
-%right '!'
-
-%type <val> parameter_list block local_vars symbol_list 
-%type <val> statements statement expr primary_expr arg_list
-%type <val> SYMBOL NUMBER STRING
-
-%start program
-
+%start translation_unit
 %%
 
-program: /* empty */
-	| external_definitions
+primary_expression
+	: IDENTIFIER
+	| constant
+	| string
+	| '(' expression ')'
+	| generic_selection
 	;
 
-external_definitions:
-	  external_definition
-	| external_definitions external_definition
+constant
+	: I_CONSTANT		/* includes character_constant */
+	| F_CONSTANT
+	| ENUMERATION_CONSTANT	/* after it has been defined as such */
 	;
 
-external_definition:
-	  SYMBOL parameter_list block			// fucntion definition
-	{ defineFunction(getSymbol($1), $2, $3); }
-	| type_specifier SYMBOL parameter_list block	// void func() ...
-	{ defineFunction(getSymbol($2), $3, $4); }
-	| type_specifier SYMBOL ';'			// [global] int a; ...
-	{ declareVariable(getSymbol($2), NULL); }
-	| type_specifier SYMBOL '=' expr ';'		// [global] int a=0; ...
-        { declareVariable(getSymbol($2), $4); }
-	| type_specifier SYMBOL '[' expr ']' ';'	// [global] int a[10]; ...
-	{ declareArray(getSymbol($2), $4); }
+enumeration_constant		/* before it has been defined as such */
+	: IDENTIFIER
 	;
 
-parameter_list:
-	 '(' ')'
-	 { $$ = NULL; }
-	| '(' symbol_list ')'
-	 { $$ = $2; }
+string
+	: STRING_LITERAL
+	| FUNC_NAME
 	;
 
-block: '{' local_vars statements '}'
-//	{ $$ = addLast($2, $3); $$ = makeAST(BLOCK_STATEMENT, $$, 0); printAST($$); }
-//	{ $$ = makeAST(BLOCK_STATEMENT, makeList2($2, $3), 0); printAST($$); }
-	{ $$ = makeAST(BLOCK_STATEMENT, $2, $3); printAST($$); }
+generic_selection
+	: GENERIC '(' assignment_expression ',' generic_assoc_list ')'
 	;
 
-local_vars: 
-	  /* NULL */ { $$ = NULL; }
-	| type_specifier symbol_list ';'
-	  { $$ = $2; }
-//	| type_specifier symbol_list '=' expr ';'
-//	  { $$ = makeAST(BLOCK_STATEMENT, $2, makeAST(EX_EQ, $2, $4)); }
-/*	| type_specifier pointer symbol_list ';'	// char *p; ...
-	  { $$ = $3; }
-	| type_specifier pointer symbol_list '=' expr ';'	// char *p; ...
-	  { $$ = $3; }
-	| type_specifier pointer symbol_list '=' string ';'	// char *p; ...
-	  { $$ = $3; }*/
+generic_assoc_list
+	: generic_association
+	| generic_assoc_list ',' generic_association
 	;
 
-/*declaration_specifiers
+generic_association
+	: type_name ':' assignment_expression
+	| DEFAULT ':' assignment_expression
+	;
+
+postfix_expression
+	: primary_expression
+	| postfix_expression '[' expression ']'
+	| postfix_expression '(' ')'
+	  { $$ = makeAST(CALL_OP, $1, 0); }
+	| postfix_expression '(' argument_expression_list ')'
+	  { $$ = makeAST(CALL_OP, $1, $3); }
+	| postfix_expression '.' IDENTIFIER
+	| postfix_expression PTR_OP IDENTIFIER
+	| postfix_expression INC_OP
+	| postfix_expression DEC_OP
+	| '(' type_name ')' '{' initializer_list '}'
+	| '(' type_name ')' '{' initializer_list ',' '}'
+	;
+
+argument_expression_list
+	: assignment_expression
+	  { $$ = makeList1($1); }
+	| argument_expression_list ',' assignment_expression
+	  { $$ = addLast($1, $3); }
+	;
+
+unary_expression
+	: postfix_expression
+	| INC_OP unary_expression
+	| DEC_OP unary_expression
+	| unary_operator cast_expression
+	| SIZEOF unary_expression
+	| SIZEOF '(' type_name ')'
+	| ALIGNOF '(' type_name ')'
+	;
+
+unary_operator
+	: '&'
+	| '*'
+	| '+'
+	| '-'
+	| '~'
+	| '!'
+	;
+
+cast_expression
+	: unary_expression
+	| '(' type_name ')' cast_expression
+	;
+
+multiplicative_expression
+	: cast_expression
+	| multiplicative_expression '*' cast_expression
+	  { $$ = makeAST(MUL_OP, $1, $3); }
+	| multiplicative_expression '/' cast_expression
+	| multiplicative_expression '%' cast_expression
+//	| multiplicative_expression '=' cast_expression	//!!!
+//	  { $$ = makeAST(EX_EQ, $1, $3);printf("!!!\n"); }
+	;
+
+additive_expression
+	: multiplicative_expression
+	| additive_expression '+' multiplicative_expression
+	  { $$ = makeAST(PLUS_OP, $1, $3); }
+	| additive_expression '-' multiplicative_expression
+	  { $$ = makeAST(MINUS_OP, $1, $3); }
+	;
+
+shift_expression
+	: additive_expression
+	| shift_expression LEFT_OP additive_expression
+	| shift_expression RIGHT_OP additive_expression
+	;
+
+relational_expression
+	: shift_expression
+	| relational_expression '<' shift_expression
+	  { $$ = makeAST(LT_OP, $1, $3); }
+	| relational_expression '>' shift_expression
+	  { $$ = makeAST(GT_OP, $1, $3); }
+	| relational_expression LE_OP shift_expression
+	| relational_expression GE_OP shift_expression
+	;
+
+equality_expression
+	: relational_expression
+//	  { $$ = makeAST(EX_EQ, 0, $1);printf("!!!\n"); }
+//	| equality_expression '=' multiplicative_expression
+//	  { $$ = makeAST(EX_EQ, $1, $3); }
+	| equality_expression EQ_OP relational_expression
+	| equality_expression NE_OP relational_expression
+	;
+
+and_expression
+	: equality_expression
+	| and_expression '&' equality_expression
+	;
+
+exclusive_or_expression
+	: and_expression
+	| exclusive_or_expression '^' and_expression
+	;
+
+inclusive_or_expression
+	: exclusive_or_expression
+	| inclusive_or_expression '|' exclusive_or_expression
+	;
+
+logical_and_expression
+	: inclusive_or_expression
+	| logical_and_expression AND_OP inclusive_or_expression
+	;
+
+logical_or_expression
+	: logical_and_expression
+	| logical_or_expression OR_OP logical_and_expression
+	;
+
+conditional_expression
+	: logical_or_expression
+	| logical_or_expression '?' expression ':' conditional_expression
+	;
+
+assignment_expression
+	: conditional_expression
+	| unary_expression assignment_operator assignment_expression
+	  { $$ = makeAST(EX_EQ, $1, $3); }
+	;
+
+assignment_operator
+	: '='
+	| MUL_ASSIGN
+	| DIV_ASSIGN
+	| MOD_ASSIGN
+	| ADD_ASSIGN
+	| SUB_ASSIGN
+	| LEFT_ASSIGN
+	| RIGHT_ASSIGN
+	| AND_ASSIGN
+	| XOR_ASSIGN
+	| OR_ASSIGN
+//	: '='	//!!!
+	;
+
+expression
+	: assignment_expression
+//	  { $$ = makeList1($1); }
+	| expression ',' assignment_expression
+//	  { $$ = addLast($1, $3); }
+	;
+
+constant_expression
+	: conditional_expression	/* with constraints */
+	;
+
+declaration
+	: declaration_specifiers ';'
+	| declaration_specifiers init_declarator_list ';'
+	  { $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }
+	| static_assert_declaration
+	;
+
+declaration_specifiers
 	: storage_class_specifier declaration_specifiers
 	| storage_class_specifier
 	| type_specifier declaration_specifiers
@@ -116,11 +257,33 @@ local_vars:
 	| function_specifier
 	| alignment_specifier declaration_specifiers
 	| alignment_specifier
-	;*/
+	;
+
+init_declarator_list
+	: init_declarator
+	  { $$ = makeList1($1);/*printf("[%s]\n",$1->sym->name);*/ }
+	| init_declarator_list ',' init_declarator
+	  { $$ = addLast($1, $3);/*printf("[%s]\n",$3->sym->name);*/ }
+	;
+
+init_declarator
+	: declarator '=' initializer
+//	  { $$ = makeAST(EX_EQ, $1, $3); }
+	| declarator
+	;
+
+storage_class_specifier
+	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
+	| EXTERN
+	| STATIC
+	| THREAD_LOCAL
+	| AUTO
+	| REGISTER
+	;
 
 type_specifier
-	: VOID
-	| VAR	//!!
+	: /* empty! */
+	| VOID
 	| CHAR
 	| SHORT
 	| INT
@@ -200,6 +363,49 @@ atomic_type_specifier
 	: ATOMIC '(' type_name ')'
 	;
 
+type_qualifier
+	: CONST
+	| RESTRICT
+	| VOLATILE
+	| ATOMIC
+	;
+
+function_specifier
+	: INLINE
+	| NORETURN
+	;
+
+alignment_specifier
+	: ALIGNAS '(' type_name ')'
+	| ALIGNAS '(' constant_expression ')'
+	;
+
+declarator
+	: pointer direct_declarator
+	| direct_declarator
+	;
+
+direct_declarator
+	: IDENTIFIER
+//	  { $$ = makeList1($1); }
+	| '(' declarator ')'
+	| direct_declarator '[' ']'
+	| direct_declarator '[' '*' ']'
+	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+	| direct_declarator '[' STATIC assignment_expression ']'
+	| direct_declarator '[' type_qualifier_list '*' ']'
+	| direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+	| direct_declarator '[' type_qualifier_list assignment_expression ']'
+	| direct_declarator '[' type_qualifier_list ']'
+	| direct_declarator '[' assignment_expression ']'
+	| direct_declarator '(' parameter_type_list ')'
+	  { $1->right = $3; }	// int func(int x)
+	| direct_declarator '(' ')'
+	| direct_declarator '(' identifier_list ')'
+//	  { $$ = addLast($1, $3); }
+	  { $1->right = $3; }	// func(x)
+	;
+
 pointer
 	: '*' type_qualifier_list pointer
 	| '*' type_qualifier_list
@@ -212,104 +418,191 @@ type_qualifier_list
 	| type_qualifier_list type_qualifier
 	;
 
-type_qualifier
-	: CONST
-	| RESTRICT
-	| VOLATILE
-	| ATOMIC
+
+parameter_type_list
+	: parameter_list ',' ELLIPSIS
+	| parameter_list
 	;
 
-symbol_list:
-	  SYMBOL
-	 { $$ = makeList1($1); }
-	| symbol_list ',' SYMBOL
-	 { $$ = addLast($1, $3); }
-	| type_specifier SYMBOL			// int func()
-	 { $$ = makeList1($2); }
-	| symbol_list ',' type_specifier SYMBOL	// func(int a, int b)
-	 { $$ = addLast($1, $4); }
-//	| type_specifier pointer SYMBOL			// int a
-//	 { printf("+\n");$$ = makeList1($3); }
-//	| expr			// [local] int a=0;
-//	 { printf("+\n");$$ = makeList1($1); }
-	| SYMBOL '=' expr			// [local] int a=0;
-	 { $$ = makeAST(EX_EQ, $1, $3); $$ = makeList2($1, $$); }
-//	| pointer SYMBOL '=' expr			// a=0,
-//	 { printf("+\n");$$ = makeList1($2); }
+parameter_list
+	: parameter_declaration
+	| parameter_list ',' parameter_declaration
 	;
 
-statements:
-	  statement
-	 { $$ = makeList1($1); }
-	| statements statement
-	 { $$ = addLast($1, $2); }
+parameter_declaration
+	: declaration_specifiers declarator
+	  { $$ = makeList1($2); }
+	| declaration_specifiers abstract_declarator
+	| declaration_specifiers
 	;
 
-statement:
-	 expr ';'
-	 { $$ = $1; }
-	| block
-	 { $$ = $1; }
-	| IF '(' expr ')' statement
-	 { $$ = makeAST(IF_STATEMENT, $3, makeList2($5, NULL)); }
-        | IF '(' expr ')' statement ELSE statement
-	 { $$ = makeAST(IF_STATEMENT, $3, makeList2($5, $7)); }
-	| RETURN expr ';'
-	 { $$ = makeAST(RETURN_STATEMENT, $2, NULL); }
+identifier_list
+	: IDENTIFIER
+	  { $$ = makeList1($1); }
+	| identifier_list ',' IDENTIFIER
+	  { $$ = addLast($1, $3); }
+	;
+
+type_name
+	: specifier_qualifier_list abstract_declarator
+	| specifier_qualifier_list
+	;
+
+abstract_declarator
+	: pointer direct_abstract_declarator
+	| pointer
+	| direct_abstract_declarator
+	;
+
+direct_abstract_declarator
+	: '(' abstract_declarator ')'
+	| '[' ']'
+	| '[' '*' ']'
+	| '[' STATIC type_qualifier_list assignment_expression ']'
+	| '[' STATIC assignment_expression ']'
+	| '[' type_qualifier_list STATIC assignment_expression ']'
+	| '[' type_qualifier_list assignment_expression ']'
+	| '[' type_qualifier_list ']'
+	| '[' assignment_expression ']'
+	| direct_abstract_declarator '[' ']'
+	| direct_abstract_declarator '[' '*' ']'
+	| direct_abstract_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+	| direct_abstract_declarator '[' STATIC assignment_expression ']'
+	| direct_abstract_declarator '[' type_qualifier_list assignment_expression ']'
+	| direct_abstract_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+	| direct_abstract_declarator '[' type_qualifier_list ']'
+	| direct_abstract_declarator '[' assignment_expression ']'
+	| '(' ')'
+	| '(' parameter_type_list ')'
+	| direct_abstract_declarator '(' ')'
+	| direct_abstract_declarator '(' parameter_type_list ')'
+	;
+
+initializer
+	: '{' initializer_list '}'
+	| '{' initializer_list ',' '}'
+	| assignment_expression
+	;
+
+initializer_list
+	: designation initializer
+	| initializer
+	| initializer_list ',' designation initializer
+	| initializer_list ',' initializer
+	;
+
+designation
+	: designator_list '='
+	;
+
+designator_list
+	: designator
+	| designator_list designator
+	;
+
+designator
+	: '[' constant_expression ']'
+	| '.' IDENTIFIER
+	;
+
+static_assert_declaration
+	: STATIC_ASSERT '(' constant_expression ',' STRING_LITERAL ')' ';'
+	;
+
+statement
+	: labeled_statement
+	| compound_statement
+	| expression_statement
+	| selection_statement
+	| iteration_statement
+	| jump_statement
+	;
+
+labeled_statement
+	: IDENTIFIER ':' statement
+	| CASE constant_expression ':' statement
+	| DEFAULT ':' statement
+	;
+
+compound_statement
+	: '{' '}'
+	| '{'  block_item_list '}'
+	  { $$ = makeAST(BLOCK_STATEMENT, $2, 0); printAST($$); /*printf("\n");*/ }
+	;
+
+block_item_list
+	: block_item
+	  { if ($1->op!=LIST) $$ = makeList1($1); else $$ = $1; }	// declaration is LIST
+	| block_item_list block_item
+	  { $$ = addLast($1, $2); }
+	;
+
+block_item
+	: declaration
+//	  { /*del LIST*/ $$ = $1->left; free($1); }
+	| statement
+	;
+
+expression_statement
+	: ';'
+	| expression ';'
+	;
+
+selection_statement
+	: IF '(' expression ')' statement ELSE statement
+	  { $$ = makeAST(IF_STATEMENT, $3, makeList2($5, $7)); }
+	| IF '(' expression ')' statement
+	  { $$ = makeAST(IF_STATEMENT, $3, makeList2($5, NULL)); }
+	| SWITCH '(' expression ')' statement
+	;
+
+iteration_statement
+	: WHILE '(' expression ')' statement
+	  { $$ = makeAST(WHILE_STATEMENT, $3, $5); }
+	| DO statement WHILE '(' expression ')' ';'
+	| FOR '(' expression_statement expression_statement ')' statement
+	| FOR '(' expression_statement expression_statement expression ')' statement
+	  { $$ = makeAST(FOR_STATEMENT, makeList3($3, $4, $5), $7); }
+	| FOR '(' declaration expression_statement ')' statement
+	| FOR '(' declaration expression_statement expression ')' statement
+	;
+
+jump_statement
+	: GOTO IDENTIFIER ';'
+	| CONTINUE ';'
+	| BREAK ';'
 	| RETURN ';'
-	 { $$ = makeAST(RETURN_STATEMENT, NULL, NULL); }
-	| WHILE '(' expr ')' statement
-	 { $$ = makeAST(WHILE_STATEMENT, $3, $5); }
-	| FOR '(' expr ';' expr ';' expr ')' statement
-	 { $$ = makeAST(FOR_STATEMENT, makeList3($3, $5, $7), $9); }
-//	| type_specifier symbol_list '=' expr ';'
-//	 { $$ = makeAST(EX_EQ, $2, $4); }
+	  { $$ = makeAST(RETURN_STATEMENT, NULL, NULL); }
+	| RETURN expression ';'
+	  { $$ = makeAST(RETURN_STATEMENT, $2, NULL); }
 	;
 
-expr: 	 primary_expr
-	| SYMBOL '=' expr
-	 { $$ = makeAST(EX_EQ, $1, $3); }
-	| SYMBOL '[' expr ']' '=' expr
-	 { $$ = makeAST(SET_ARRAY_OP, makeList2($1, $3), $6); }
-	| expr '+' expr
-	 { $$ = makeAST(PLUS_OP, $1, $3); }
-	| expr '-' expr
-	 { $$ = makeAST(MINUS_OP, $1, $3); }
-	| expr '*' expr
-	 { $$ = makeAST(MUL_OP, $1, $3); }
-	| expr '<' expr
-	 { $$ = makeAST(LT_OP, $1, $3); }
-	| expr '>' expr
-	 { $$ = makeAST(GT_OP, $1, $3); }
+translation_unit
+	: external_declaration
+	| translation_unit external_declaration
 	;
 
-primary_expr:
-	  SYMBOL
-	| NUMBER
-	| STRING
-	| SYMBOL '[' expr ']'
-	  { $$ = makeAST(GET_ARRAY_OP, $1, $3); }
-	| SYMBOL '(' arg_list ')'
-	 { $$ = makeAST(CALL_OP, $1, $3); }
-	| SYMBOL '(' ')'
-	 { $$ = makeAST(CALL_OP, $1, NULL); }
-        | '(' expr ')'
-         { $$ = $2; }
-	| SYMBOL '=' primary_expr
-	 { $$ = makeAST(EX_EQ, $1, $3); }
-//	| PRINTLN '(' arg_list ')'
-//	 { $$ = makeAST(PRINTLN_OP, $3, NULL); }
+external_declaration
+	: function_definition
+	| declaration
 	;
 
-arg_list:
-	 expr
-	 { $$ = makeList1($1); }
-	| arg_list ',' expr
-	 { $$ = addLast($1, $3); }
+function_definition
+	: declaration_specifiers declarator declaration_list compound_statement
+//	  { defineFunction(getSymbol($2), $3, $4); }
+	| declaration_specifiers declarator compound_statement
+	  { defineFunction(getSymbol($2), $2->right, $3); }
+//	  { defineFunction(getSymbol($2->left), $2->right, $3); }
+//	| declarator compound_statement	// [empty!] func()
+//	  { defineFunction(getSymbol($1), 0, $2); }
+	;
+
+declaration_list
+	: declaration
+	| declaration_list declaration
 	;
 
 %%
-
 #include <stdarg.h>
 void error(char *fmt, ...)
 {
