@@ -27,8 +27,9 @@ WS  [ \t\v\n\f]
 
 extern void yyerror(char *);  /* prints grammar violation message */
 //extern int sym_type(const char *);  /* returns type from symbol table */
-
 #define sym_type(identifier) IDENTIFIER /* with no symbol table, fake it */
+
+#define RET_TYPE(x)				{ yylval.type = x; return(x); }
 
 void comment();
 int check_type();
@@ -43,7 +44,7 @@ int check_type();
 "auto"					{ return(AUTO); }
 "break"					{ return(BREAK); }
 "case"					{ return(CASE); }
-"char"					{ return(CHAR); }
+"char"					{ RET_TYPE(CHAR); }
 "const"					{ return(CONST); }
 "continue"				{ return(CONTINUE); }
 "default"				{ return(DEFAULT); }
@@ -52,17 +53,17 @@ int check_type();
 "else"					{ return(ELSE); }
 "enum"					{ return(ENUM); }
 "extern"				{ return(EXTERN); }
-"float"					{ return(FLOAT); }
+"float"					{ RET_TYPE(FLOAT); }
 "for"					{ return(FOR); }
 "goto"					{ return(GOTO); }
 "if"					{ return(IF); }
 "inline"				{ return(INLINE); }
-"int"					{ return(INT); }
-"long"					{ return(LONG); }
+"int"					{ RET_TYPE(INT); }
+"long"					{ RET_TYPE(LONG); }
 "register"				{ return(REGISTER); }
 "restrict"				{ return(RESTRICT); }
 "return"				{ return(RETURN); }
-"short"					{ return(SHORT); }
+"short"					{ RET_TYPE(SHORT); }
 "signed"				{ return(SIGNED); }
 "sizeof"				{ return(SIZEOF); }
 "static"				{ return(STATIC); }
@@ -71,16 +72,16 @@ int check_type();
 "typedef"				{ return(TYPEDEF); }
 "union"					{ return(UNION); }
 "unsigned"				{ return(UNSIGNED); }
-"void"					{ return(VOID); }
+"void"					{ RET_TYPE(VOID); }
 "volatile"				{ return(VOLATILE); }
 "while"					{ return(WHILE); }
 "_Alignas"				{ return ALIGNAS; }
 "_Alignof"				{ return ALIGNOF; }
 "_Atomic"				{ return ATOMIC; }
-"_Bool"					{ return BOOL; }
-"_Complex"				{ return COMPLEX; }
+"_Bool"					{ RET_TYPE(BOOL); }
+"_Complex"				{ RET_TYPE(COMPLEX); }
 "_Generic"				{ return GENERIC; }
-"_Imaginary"				{ return IMAGINARY; }
+"_Imaginary"				{ RET_TYPE(IMAGINARY); }
 "_Noreturn"				{ return NORETURN; }
 "_Static_assert"			{ return STATIC_ASSERT; }
 "_Thread_local"				{ return THREAD_LOCAL; }

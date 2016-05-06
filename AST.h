@@ -39,10 +39,11 @@ typedef struct abstract_syntax_tree {
 
 typedef struct symbol {
 	char *name;
-	int val;
-	int *addr;
-	AST *func_params;
-	AST *func_body;
+	int type, pointer;
+//	int val;
+//	int *addr;
+//	AST *func_params;
+//	AST *func_body;
 } Symbol;
 
 #define MAX_SYMBOLS 10000

@@ -28,3 +28,12 @@
 char *code_name(int code);
 int get_code(char *name);
 
+void initGenCode();
+void genCode1(int opcode, int operand1);
+void genCode2(int opcode, int operand1, int operand2);
+void genCode3(int opcode, int operand1, int operand2, int operand3);
+void genCodeS(int opcode, int operand1, int operand2, char *s);
+
+void genFuncCode(char *entry_name, int n_local);
+int genString(char *s);
+int genStatic(int a);

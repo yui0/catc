@@ -169,11 +169,8 @@ void freeReg(int reg)
 	tmpRegState[reg] = -1;
 }
 
-/*
- * Code generation
- */
+// Code generation
 extern int label_counter;
-
 void genFuncCode(char *entry_name, int n_local)
 {
 	int i;

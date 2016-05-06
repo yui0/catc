@@ -10,6 +10,7 @@
 
 %union {
 	AST *val;
+	int type;
 }
 
 %right '='
@@ -18,8 +19,10 @@
 %left '*' '/'
 %right '!'
 
+%type <type> type_specifier
 %type <val> declarator init_declarator init_declarator_list initializer
-%type <val> declaration declaration_list parameter_declaration declaration_specifiers
+%type <val> declaration declaration_list parameter_list parameter_declaration declaration_specifiers
+%type <val> pointer type_qualifier_list
 %type <val> statement compound_statement jump_statement iteration_statement
 %type <val> expression_statement selection_statement
 %type <val> direct_declarator block_item_list block_item
@@ -138,6 +141,7 @@ multiplicative_expression
 	| multiplicative_expression '*' cast_expression
 	  { $$ = makeAST(MUL_OP, $1, $3); }
 	| multiplicative_expression '/' cast_expression
+//	  { $$ = makeAST(DIV_OP, $1, $3); }
 	| multiplicative_expression '%' cast_expression
 	;
 
@@ -237,7 +241,7 @@ constant_expression
 declaration
 	: declaration_specifiers ';'
 	| declaration_specifiers init_declarator_list ';'
-	  { $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }
+	  { $2->left->sym->type = $1; $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }
 	| static_assert_declaration
 	;
 
@@ -263,8 +267,7 @@ init_declarator_list
 
 init_declarator
 	: declarator '=' initializer
-	  { $$ = makeList1($1); $$ = addLast($$, makeAST(EX_EQ, $1, $3)); }
-//	  { $$ = addLast($1, makeAST(EX_EQ, $1, $3)); printf("![%x,%x]!\n",$1,$1->right->left); }
+	  { $$ = makeList1($1); $$ = addLast($$, makeAST(EX_EQ, $1, $3)); }	// int a = 10
 	| declarator
 	;
 
@@ -378,6 +381,7 @@ alignment_specifier
 
 declarator
 	: pointer direct_declarator
+	  { $2->sym->pointer = 1/*$1->sym->pointer*/; $$ = $2; }
 	| direct_declarator
 	;
 
@@ -406,6 +410,7 @@ pointer
 	: '*' type_qualifier_list pointer
 	| '*' type_qualifier_list
 	| '*' pointer
+//	  { $1->sym->pointer++; }	// char **a;
 	| '*'
 	;
 
@@ -422,12 +427,14 @@ parameter_type_list
 
 parameter_list
 	: parameter_declaration
+	  { $$ = makeList1($1); }
 	| parameter_list ',' parameter_declaration
+	  { $$ = addLast($1, $3); }
 	;
 
 parameter_declaration
 	: declaration_specifiers declarator
-	  { $$ = makeList1($2); }
+	  { $$ = $2; }
 	| declaration_specifiers abstract_declarator
 	| declaration_specifiers
 	;
