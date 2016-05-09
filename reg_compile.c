@@ -3,8 +3,9 @@
 
 #define VAR_ARG 0
 #define VAR_LOCAL 1
+#define VAR_GLOBAL 2
 
-#define MAX_ENV 100
+#define MAX_ENV 1000
 
 typedef struct env {
 	Symbol *var;
@@ -30,6 +31,9 @@ void compileStoreVar(Symbol *var, int r)
 			case VAR_LOCAL:
 				genCode2(STOREL, r, Env[i].pos);
 				return;
+			case VAR_GLOBAL:
+				genCode2(STOREL, r, Env[i].pos);//FIXME
+				return;
 			}
 		}
 	}
@@ -47,6 +51,9 @@ void compileLoadVar(int target, Symbol *var)
 			case VAR_LOCAL:
 				genCode2(LOADL, target, Env[i].pos);
 				return;
+			case VAR_GLOBAL:
+				genCode2(LOADS, target, Env[i].pos);//FIXME
+				return;
 			}
 		}
 	}
@@ -57,7 +64,7 @@ void compileStatement(AST *p);
 void defineFunction(Symbol *fsym, AST *params, AST *body)
 {
 	initGenCode();
-	envp = 0;
+//	envp = 0;
 	int param_pos = 0;
 	local_var_pos = 0;
 	for ( ; params != NULL; params = getNext(params)) {
@@ -68,7 +75,7 @@ void defineFunction(Symbol *fsym, AST *params, AST *body)
 	}
 	compileStatement(body);
 	genFuncCode(fsym->name, local_var_pos);
-	envp = 0;  /* reset */
+//	envp = 0;  /* reset */
 }
 
 void compileBlock(AST *local_vars, AST *statements)
@@ -159,6 +166,13 @@ void compileExpr(int target, AST *p)
 		compileExpr(r2, p->right);
 		genCode3(MUL, target, r1, r2);
 		return;
+/*	case DIV_OP:
+		r1 = tmp_counter++;
+		r2 = tmp_counter++;
+		compileExpr(r1, p->left);
+		compileExpr(r2, p->right);
+		genCode3(DIV, target, r1, r2);
+		return;*/
 	case LT_OP:
 		r1 = tmp_counter++;
 		r2 = tmp_counter++;
@@ -292,9 +306,14 @@ void compileStatement(AST *p)
 // global variable
 void declareVariable(Symbol *vsym, AST *init_value)
 {
-	/* not implemented */
-//	printf("declareVariable %s = %d\n", vsym->name, init_value->val);
-	genStatic(init_value->val);
+	int a = init_value ? init_value->val : 0;
+//	printf("declareVariable %s = %d\n", vsym->name, a);
+	int l = genStatic(a);
+
+	Env[envp].var = vsym;
+	Env[envp].var_kind = VAR_GLOBAL;
+	Env[envp].pos = l/*init_value*/;
+	envp++;
 }
 
 // Array

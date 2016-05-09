@@ -184,12 +184,12 @@ void genFuncCode(char *entry_name, int n_local)
 	fprintf(yyout, "\t.text\n");
 	fprintf(yyout, "\t.align\t4\n");
 	if (isDarwin) {
-		fprintf(yyout, "\t.global\t_%s\n", entry_name);    /* .global <name> */
-		fprintf(yyout, "_%s:\n", entry_name);             /* <name>:              */
+		fprintf(yyout, "\t.global\t_%s\n", entry_name);		// .global <name>
+		fprintf(yyout, "_%s:\n", entry_name);			//  <name>:
 	} else {
-		fprintf(yyout, "\t.global\t%s\n", entry_name);    /* .global <name> */
-		fprintf(yyout, "\t.type\t%s,@function\n", entry_name);/* .type <name>,@function */
-		fprintf(yyout, "%s:\n", entry_name);             /* <name>:              */
+		fprintf(yyout, "\t.global\t%s\n", entry_name);		// .global <name>
+		fprintf(yyout, "\t.type\t%s,@function\n", entry_name);	// .type <name>,@function
+		fprintf(yyout, "%s:\n", entry_name);			//  <name>:
 	}
 	fprintf(yyout, "\tpushl\t%%ebp\n");
 	fprintf(yyout, "\tmovl\t%%esp,%%ebp\n");
@@ -277,18 +277,18 @@ void genFuncCode(char *entry_name, int n_local)
 			r = useReg(opd1);
 			freeReg(r);
 			if (isDarwin) {
-				fprintf(yyout, "\tmovl\t%s,%d(%%esp)\n",tmpRegName[r],opd2*4);
+				fprintf(yyout, "\tmovl\t%s,%d(%%esp)\n", tmpRegName[r], opd2*4);
 			} else {
-				fprintf(yyout, "\tpushl\t%s\n",tmpRegName[r]);
+				fprintf(yyout, "\tpushl\t%s\n", tmpRegName[r]);
 			}
 			break;
 		case RET:
 			r = useReg(opd1);
 			freeReg(r);
 			if (r != REG_AX) {
-				fprintf(yyout, "\tmovl\t%s,%%eax\n",tmpRegName[r]);
+				fprintf(yyout, "\tmovl\t%s,%%eax\n", tmpRegName[r]);
 			}
-			fprintf(yyout, "\tjmp\t.L%d\n",ret_lab);
+			fprintf(yyout, "\tjmp\t.L%d\n", ret_lab);
 			break;
 
 		case ADD:
@@ -300,7 +300,7 @@ void genFuncCode(char *entry_name, int n_local)
 				break;
 			}
 			assignReg(opd1,r1);
-			fprintf(yyout, "\taddl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\taddl\t%s,%s\n", tmpRegName[r2], tmpRegName[r1]);
 			break;
 		case SUB:
 			r1 = useReg(opd2);
@@ -311,7 +311,7 @@ void genFuncCode(char *entry_name, int n_local)
 				break;
 			}
 			assignReg(opd1,r1);
-			fprintf(yyout, "\tsubl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
+			fprintf(yyout, "\tsubl\t%s,%s\n", tmpRegName[r2], tmpRegName[r1]);
 			break;
 		case MUL:
 			r1 = useReg(opd2);
@@ -321,12 +321,12 @@ void genFuncCode(char *entry_name, int n_local)
 			if (opd1 < 0) {
 				break;
 			}
-			assignReg(opd1,REG_AX);
+			assignReg(opd1, REG_AX);
 			saveReg(REG_DX);
 			if (r1 != REG_AX) {
-				fprintf(yyout, "\tmovl\t%s,%s\n",tmpRegName[r1],tmpRegName[REG_AX]);
+				fprintf(yyout, "\tmovl\t%s,%s\n", tmpRegName[r1], tmpRegName[REG_AX]);
 			}
-			fprintf(yyout, "\timull\t%s,%s\n",tmpRegName[r2],tmpRegName[REG_AX]);
+			fprintf(yyout, "\timull\t%s,%s\n", tmpRegName[r2], tmpRegName[REG_AX]);
 			break;
 		case LT:
 			r1 = useReg(opd2);
@@ -339,12 +339,12 @@ void genFuncCode(char *entry_name, int n_local)
 			r = getReg(opd1);
 			l1 = label_counter++;
 			l2 = label_counter++;
-			fprintf(yyout, "\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
-			fprintf(yyout, "\tjl .L%d\n",l1);
-			fprintf(yyout, "\tmovl\t$0,%s\n",tmpRegName[r]);
-			fprintf(yyout, "\tjmp .L%d\n",l2);
-			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
-			fprintf(yyout, ".L%d:",l2);
+			fprintf(yyout, "\tcmpl\t%s,%s\n", tmpRegName[r2], tmpRegName[r1]);
+			fprintf(yyout, "\tjl .L%d\n", l1);
+			fprintf(yyout, "\tmovl\t$0,%s\n", tmpRegName[r]);
+			fprintf(yyout, "\tjmp .L%d\n", l2);
+			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n", l1, tmpRegName[r]);
+			fprintf(yyout, ".L%d:", l2);
 			break;
 		case GT:
 			r1 = useReg(opd2);
@@ -357,12 +357,12 @@ void genFuncCode(char *entry_name, int n_local)
 			r = getReg(opd1);
 			l1 = label_counter++;
 			l2 = label_counter++;
-			fprintf(yyout, "\tcmpl\t%s,%s\n",tmpRegName[r2],tmpRegName[r1]);
-			fprintf(yyout, "\tjg\t.L%d\n",l1);
-			fprintf(yyout, "\tmovl\t$0,%s\n",tmpRegName[r]);
-			fprintf(yyout, "\tjmp\t.L%d\n",l2);
-			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n",l1,tmpRegName[r]);
-			fprintf(yyout, ".L%d:",l2);
+			fprintf(yyout, "\tcmpl\t%s,%s\n", tmpRegName[r2], tmpRegName[r1]);
+			fprintf(yyout, "\tjg\t.L%d\n", l1);
+			fprintf(yyout, "\tmovl\t$0,%s\n", tmpRegName[r]);
+			fprintf(yyout, "\tjmp\t.L%d\n", l2);
+			fprintf(yyout, ".L%d:\tmovl\t$1,%s\n", l1, tmpRegName[r]);
+			fprintf(yyout, ".L%d:", l2);
 			break;
 
 /*		case PRINTLN:

@@ -241,7 +241,7 @@ constant_expression
 declaration
 	: declaration_specifiers ';'
 	| declaration_specifiers init_declarator_list ';'
-	  { $2->left->sym->type = $1; $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }
+	  { $2->left->sym->type = $1; $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }	// int a = 0;
 	| static_assert_declaration
 	;
 
@@ -536,14 +536,12 @@ compound_statement
 block_item_list
 	: block_item
 	  { $$ = addList($1); }	// declaration is LIST
-//	  { if ($1->op!=LIST) $$ = makeList1($1); else $$ = $1; }	// declaration is LIST
 	| block_item_list block_item
-	  { $$ = addLast($1, $2); }
+	  { $$ = addLast($1, $2); }	// may $2 is LIST
 	;
 
 block_item
 	: declaration
-//	  { /*del LIST*/ $$ = $1->left; free($1); }
 	| statement
 	;
 
@@ -589,6 +587,7 @@ translation_unit
 external_declaration
 	: function_definition
 	| declaration
+	  { declareVariable(getSymbol($1->left), $1->right->left->right); }	// [global] int a = 10;
 	;
 
 function_definition

@@ -10,6 +10,7 @@
 #define ADD 	6	// ADD t,r1,r2
 #define SUB 	7	// SUB t,r1,r2
 #define MUL 	8	// MUL t,r1,r2
+//#define DIV 	8	// DIV t,r1,r2
 #define GT	9 	// GT  t,r1,r2
 #define LT	10	// LT  r,r1,r2
 #define BEQ0	11	// BQ  r,L	branch if eq 0

@@ -149,7 +149,7 @@ AST *addLast(AST *l, AST *p)
 	while (q->right != NULL) {
 		q = q->right;
 	}
-	q->right = makeAST(LIST, p, NULL);
+	q->right = (p->op!=LIST) ? makeAST(LIST, p, NULL) : p;
 	return l;
 }
 
@@ -192,13 +192,13 @@ AST *makeSymbol(char *name)
 
 Symbol *getSymbol(AST *p)
 {
+	//printf("getSymbol [%x]\n", p);
 	if (!p) fprintf(stderr, "AST is null at getSymbol!\n");
 	if (p->op != SYM) {
 		fprintf(stderr, "bad access to symbol\n");
 		printAST(p);
 		printf("\n");
 		exit(1);
-	} else {
-		return p->sym;
 	}
+	return p->sym;
 }
