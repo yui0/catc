@@ -1,0 +1,620 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include "AST.h"
+#ifdef DEBUG
+#define YYERROR_VERBOSE 1
+#define YYDEBUG 1
+#endif
+%}
+
+%union {
+	AST *val;
+	int type;
+}
+
+%glr-parser
+%define parse.error verbose
+
+%right '=' MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
+%left '<' '>' LE_OP GE_OP EQ_OP NE_OP
+%left '+' '-'
+%left '*' '/' '%'
+%left OR_OP AND_OP
+%right '!' '~' INC_OP DEC_OP
+%left PTR_OP LEFT_OP RIGHT_OP
+
+%type <val> type_specifier
+%type <val> type_qualifier
+%type <val> d
+
+%token <val> IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
+%token <val> PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
+%token <val> AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
+%token <val> SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
+%token <val> XOR_ASSIGN OR_ASSIGN
+%token <val> TYPEDEF_NAME ENUMERATION_CONSTANT
+%token <val> TYPEDEF EXTERN STATIC AUTO REGISTER INLINE
+%token <val> CONST RESTRICT VOLATILE
+%token <val> BOOL CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE VOID
+%token <val> COMPLEX IMAGINARY
+%token <val> STRUCT UNION ENUM ELLIPSIS
+%token <val> CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
+%token <val> ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
+
+%start translation_unit
+%%
+
+primary_expression
+	: IDENTIFIER { $$ = $1; }
+	| constant { $$ = $1; }
+	| string { $$ = $1; }
+	| '(' expression ')' { $$ = $2; }
+	| generic_selection { $$ = $1; }
+	;
+ 
+constant
+	: I_CONSTANT { $$ = $1; }
+	| F_CONSTANT { $$ = $1; }
+	| ENUMERATION_CONSTANT { $$ = $1; }
+	;
+
+enumeration_constant
+	: ENUMERATION_CONSTANT { $$ = $1; }
+	;
+
+string
+	: STRING_LITERAL { $$ = $1; }
+	;
+
+generic_selection
+	: GENERIC '(' assignment_expression ',' generic_assoc_list ')' { $$ = makeAST(GENERIC, $3, $5); }
+	;
+
+generic_assoc_list
+	: generic_assoc { $$ = makeList1($1); }
+	| generic_assoc_list ',' generic_assoc { $$ = addLast($1, $3); }
+	;
+
+generic_assoc
+	: type_name ':' assignment_expression { $$ = makeAST(GEN_ASSOC, $1, $3); }
+	| DEFAULT ':' assignment_expression { $$ = makeAST(GEN_DEFAULT, NULL, $3); }
+	;
+
+postfix_expression
+	: primary_expression { $$ = $1; }
+	| postfix_expression '[' expression ']' { $$ = makeAST(ARRAY_REF, $1, $3); }
+	| postfix_expression '(' ')' { $$ = makeAST(FUNC_CALL, $1, NULL); }
+	| postfix_expression '(' argument_expression_list ')' { $$ = makeAST(FUNC_CALL, $1, $3); }
+	| postfix_expression '.' IDENTIFIER { $$ = makeAST(DOT_OP, $1, $3); }
+	| postfix_expression PTR_OP IDENTIFIER { $$ = makeAST(ARROW_OP, $1, $3); }
+	| INC_OP postfix_expression { $$ = makeAST(PRE_INC, $2, NULL); }
+	| DEC_OP postfix_expression { $$ = makeAST(PRE_DEC, $2, NULL); }
+	| postfix_expression INC_OP { $$ = makeAST(POST_INC, $1, NULL); }
+	| postfix_expression DEC_OP { $$ = makeAST(POST_DEC, $1, NULL); }
+	| SIZEOF unary_expression { $$ = makeAST(SIZEOF_EXPR, $2, NULL); }
+	| SIZEOF '(' type_name ')' { $$ = makeAST(SIZEOF_TYPE, $3, NULL); }
+	;
+
+argument_expression_list
+	: assignment_expression { $$ = makeList1($1); }
+	| argument_expression_list ',' assignment_expression { $$ = addLast($1, $3); }
+	;
+
+unary_expression
+	: postfix_expression { $$ = $1; }
+	| INC_OP unary_expression { $$ = makeAST(PRE_INC, $2, NULL); }
+	| DEC_OP unary_expression { $$ = makeAST(PRE_DEC, $2, NULL); }
+	| unary_operator cast_expression { $$ = makeAST(UNARY_OP, $1, $2); }
+	| SIZEOF unary_expression { $$ = makeAST(SIZEOF_EXPR, $2, NULL); }
+	| SIZEOF '(' type_name ')' { $$ = makeAST(SIZEOF_TYPE, $3, NULL); }
+	;
+
+unary_operator
+	: '&' { $$ = makeAST(ADDR_OP, NULL, NULL); }
+	| '*' { $$ = makeAST(DEREF_OP, NULL, NULL); }
+	| '+' { $$ = makeAST(PLUS_UNARY, NULL, NULL); }
+	| '-' { $$ = makeAST(MINUS_UNARY, NULL, NULL); }
+	| '~' { $$ = makeAST(BIT_NOT, NULL, NULL); }
+	| '!' { $$ = makeAST(LOG_NOT, NULL, NULL); }
+	;
+
+cast_expression
+	: unary_expression { $$ = $1; }
+	| '(' type_name ')' cast_expression { $$ = makeAST(CAST, $2, $4); }
+	;
+
+multiplicative_expression
+	: cast_expression { $$ = $1; }
+	| multiplicative_expression '*' cast_expression { $$ = makeAST(MUL_OP, $1, $3); }
+	| multiplicative_expression '/' cast_expression { $$ = makeAST(DIV_OP, $1, $3); }
+	| multiplicative_expression '%' cast_expression { $$ = makeAST(MOD_OP, $1, $3); }
+	;
+
+additive_expression
+	: multiplicative_expression { $$ = $1; }
+	| additive_expression '+' multiplicative_expression { $$ = makeAST(ADD_OP, $1, $3); }
+	| additive_expression '-' multiplicative_expression { $$ = makeAST(SUB_OP, $1, $3); }
+	;
+
+shift_expression
+	: additive_expression { $$ = $1; }
+	| shift_expression LEFT_OP additive_expression { $$ = makeAST(SHL_OP, $1, $3); }
+	| shift_expression RIGHT_OP additive_expression { $$ = makeAST(SHR_OP, $1, $3); }
+	;
+
+relational_expression
+	: shift_expression { $$ = $1; }
+	| relational_expression '<' shift_expression { $$ = makeAST(LT_OP, $1, $3); }
+	| relational_expression '>' shift_expression { $$ = makeAST(GT_OP, $1, $3); }
+	| relational_expression LE_OP shift_expression { $$ = makeAST(LE_OP_AST, $1, $3); }
+	| relational_expression GE_OP shift_expression { $$ = makeAST(GE_OP_AST, $1, $3); }
+	;
+
+equality_expression
+	: relational_expression { $$ = $1; }
+	| equality_expression EQ_OP relational_expression { $$ = makeAST(EQ_OP_AST, $1, $3); }
+	| equality_expression NE_OP relational_expression { $$ = makeAST(NE_OP_AST, $1, $3); }
+	;
+
+bitwise_and_expression
+	: equality_expression { $$ = $1; }
+	| bitwise_and_expression '&' equality_expression { $$ = makeAST(BIT_AND, $1, $3); }
+	;
+
+bitwise_xor_expression
+	: bitwise_and_expression { $$ = $1; }
+	| bitwise_xor_expression '^' bitwise_and_expression { $$ = makeAST(BIT_XOR, $1, $3); }
+	;
+
+bitwise_or_expression
+	: bitwise_xor_expression { $$ = $1; }
+	| bitwise_or_expression '|' bitwise_xor_expression { $$ = makeAST(BIT_OR, $1, $3); }
+	;
+
+logical_and_expression
+	: bitwise_or_expression { $$ = $1; }
+	| logical_and_expression AND_OP bitwise_or_expression { $$ = makeAST(LOG_AND, $1, $3); }
+	;
+
+logical_or_expression
+	: logical_and_expression { $$ = $1; }
+	| logical_or_expression OR_OP logical_and_expression { $$ = makeAST(OR_OP, $1, $3); }
+	;
+
+conditional_expression
+	: logical_or_expression { $$ = $1; }
+	| logical_or_expression '?' expression ':' conditional_expression { $$ = makeAST(COND_OP, $1, makeList2($3, $5)); }
+	;
+
+assignment_expression
+	: conditional_expression { $$ = $1; }
+	| unary_expression assignment_operator assignment_expression { $$ = makeAST(ASSIGN_OP, $1, $3); }  /* assignment_operatorの種類はASTで区別可能 */
+	;
+
+assignment_operator
+	: '='
+	| MUL_ASSIGN
+	| DIV_ASSIGN
+	| MOD_ASSIGN
+	| ADD_ASSIGN
+	| SUB_ASSIGN
+	| LEFT_ASSIGN
+	| RIGHT_ASSIGN
+	| AND_ASSIGN
+	| XOR_ASSIGN
+	| OR_ASSIGN
+	;
+
+expression
+	: assignment_expression { $$ = $1; }
+	| expression ',' assignment_expression { $$ = addLast($1, $3); }
+	;
+
+constant_expression
+	: conditional_expression { $$ = $1; }
+	;
+
+declaration_specifiers
+	: storage_class_specifier declaration_specifiers { $$ = declareSpec($1, $2); }
+	| storage_class_specifier { $$ = $1; }
+	| type_specifier declaration_specifiers { $$ = declareSpec($1, $2); }
+	| type_specifier { $$ = $1; }
+	| type_qualifier declaration_specifiers { $$ = declareSpec($1, $2); }
+	| type_qualifier { $$ = $1; }
+	| function_specifier declaration_specifiers { $$ = declareSpec($1, $2); }
+	| function_specifier { $$ = $1; }
+	;
+
+storage_class_specifier
+	: TYPEDEF { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| EXTERN { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| STATIC { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| AUTO { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| REGISTER { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	;
+
+function_specifier
+	: INLINE { $$ = makeAST(FUNCSPEC, NULL, NULL); }
+	;
+
+type_specifier
+	: VOID { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| CHAR { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| SHORT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| INT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| LONG { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| FLOAT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| DOUBLE { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| SIGNED { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| UNSIGNED { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| BOOL { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| COMPLEX { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| IMAGINARY { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| struct_or_union_specifier { $$ = $1; }
+	| enum_specifier { $$ = $1; }
+	| TYPEDEF_NAME { $$ = $1; }
+	;
+
+specifier_qualifier_list
+	: type_specifier specifier_qualifier_list { $$ = makeList1($1); $$ = addLast($2, $1); }
+	| type_specifier { $$ = makeList1($1); }
+	| type_qualifier specifier_qualifier_list { $$ = makeList1($1); $$ = addLast($2, $1); }
+	| type_qualifier { $$ = makeList1($1); }
+	;
+
+type_qualifier_list
+	: type_qualifier { $$ = makeList1($1); }
+	| type_qualifier_list type_qualifier { $$ = addLast($1, $2); }
+	;
+
+type_qualifier
+	: CONST { $$ = makeAST(TYPE_QUAL, NULL, NULL); }
+	| RESTRICT { $$ = makeAST(TYPE_QUAL, NULL, NULL); }
+	| VOLATILE { $$ = makeAST(TYPE_QUAL, NULL, NULL); }
+	;
+
+function_specifier_list
+	: function_specifier { $$ = makeList1($1); }
+	| function_specifier_list function_specifier { $$ = addLast($1, $2); }
+	;
+
+declarator
+	: pointer direct_declarator { $$ = makeAST(DECL, $1, $2); }
+	| pointer { $$ = $1; }
+	| direct_declarator { $$ = $1; }
+	;
+
+direct_declarator
+	: IDENTIFIER { $$ = makeAST(ID_DECL, $1, NULL); }
+	| '(' declarator ')' { $$ = $2; }
+	| direct_declarator '[' ']' { $$ = makeAST(ARRAY_DECL, $1, NULL); }
+	| direct_declarator '[' assignment_expression ']' { $$ = makeAST(ARRAY_DECL, $1, $3); }
+	| direct_declarator '(' parameter_type_list ')' { $$ = makeAST(FUNC_DECL, $1, $3); }
+	| direct_declarator '(' identifier_list ')' { $$ = makeAST(FUNC_DECL_IDLIST, $1, $3); }
+	| direct_declarator '(' ')' { $$ = makeAST(FUNC_DECL, $1, NULL); }
+	;
+
+pointer
+	: '*' type_qualifier_list pointer { $$ = makeAST(STAR, $2, $3); }
+	| '*' pointer { $$ = makeAST(STAR, NULL, $2); }
+	| '*' type_qualifier_list { $$ = makeAST(STAR, $2, NULL); }
+	| '*' { $$ = makeAST(STAR, NULL, NULL); }
+	;
+
+parameter_type_list
+	: parameter_list { $$ = $1; }
+	| parameter_list ',' ELLIPSIS { $$ = addEllipsis($1); }
+	;
+
+parameter_list
+	: parameter_declaration { $$ = makeList1($1); }
+	| parameter_list ',' parameter_declaration { $$ = addLast($1, $3); }
+	;
+
+parameter_declaration
+	: declaration_specifiers declarator { $$ = makeAST(PARAM_DECL, $1, $2); }
+	| declaration_specifiers abstract_declarator { $$ = makeAST(PARAM_DECL, $1, $2); }
+	| declaration_specifiers { $$ = makeAST(PARAM_DECL, $1, NULL); }
+	;
+
+identifier_list
+	: IDENTIFIER { $$ = makeList1($1); }
+	| identifier_list ',' IDENTIFIER { $$ = addLast($1, $3); }
+	;
+
+type_name
+	: specifier_qualifier_list { $$ = $1; }
+	| specifier_qualifier_list abstract_declarator { $$ = makeAST(TYPE_NAME, $1, $2); }
+	;
+
+abstract_declarator
+	: pointer direct_abstract_declarator { $$ = makeAST(ABS_DECL, $1, $2); }
+	| pointer { $$ = $1; }
+	| direct_abstract_declarator { $$ = $1; }
+	;
+
+direct_abstract_declarator
+	: '(' abstract_declarator ')' { $$ = $2; }
+	| '[' ']' { $$ = makeAST(ARRAY_ABS, NULL, NULL); }
+	| '[' '*' ']' { $$ = makeAST(ARRAY_ABS, makeAST(STAR, NULL, NULL), NULL); }
+	| '[' STATIC type_qualifier_list assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $4, NULL); }
+	| '[' STATIC assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $3, NULL); }
+	| '[' type_qualifier_list STATIC assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $4, NULL); }
+	| '[' type_qualifier_list assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $3, NULL); }
+	| '[' type_qualifier_list ']' { $$ = makeAST(ARRAY_ABS, NULL, NULL); }
+	| '[' assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $2, NULL); }
+	| direct_abstract_declarator '[' ']' { $$ = makeAST(ARRAY_ABS, $1, NULL); }
+	| direct_abstract_declarator '[' '*' ']' { $$ = makeAST(ARRAY_ABS, $1, makeAST(STAR, NULL, NULL)); }
+	| direct_abstract_declarator '[' STATIC type_qualifier_list assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $1, $5); }
+	| direct_abstract_declarator '[' STATIC assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $1, $4); }
+	| direct_abstract_declarator '[' type_qualifier_list assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $1, $4); }
+	| direct_abstract_declarator '[' type_qualifier_list STATIC assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $1, $5); }
+	| direct_abstract_declarator '[' type_qualifier_list ']' { $$ = makeAST(ARRAY_ABS, $1, NULL); }
+	| direct_abstract_declarator '[' assignment_expression ']' { $$ = makeAST(ARRAY_ABS, $1, $3); }
+	| '(' ')' { $$ = makeAST(FUNC_ABS, NULL, NULL); }
+	| '(' parameter_type_list ')' { $$ = makeAST(FUNC_ABS, $2, NULL); }
+	| direct_abstract_declarator '(' ')' { $$ = makeAST(FUNC_ABS, $1, NULL); }
+	| direct_abstract_declarator '(' parameter_type_list ')' { $$ = makeAST(FUNC_ABS, $1, $3); }
+	;
+
+translation_unit
+	: external_declaration { $$ = makeList1($1); }
+	| translation_unit external_declaration { $$ = addLast($1, $2); }
+	;
+
+external_declaration
+	: function_definition { $$ = $1; }
+	| declaration { $$ = $1; declareVariable($1->left->sym, $1->right); }
+	;
+
+function_definition
+	: declaration_specifiers declarator declaration_list compound_statement { defineFunction($2->sym, $3, $4); $$ = $2; }
+	| declaration_specifiers declarator compound_statement { defineFunction($2->sym, $2->right, $3); $$ = $2; }
+	;
+
+declaration_list
+	: declaration { $$ = makeList1($1); }
+	| declaration_list declaration { $$ = addLast($1, $2); }
+	;
+
+declaration
+	: declaration_specifiers init_declarator_list ';' { $$ = makeAST(DECL_LIST, $1, $2); }
+	| declaration_specifiers ';' { $$ = $1; }
+	| static_assert_declaration { $$ = $1; }
+	;
+
+init_declarator_list
+	: init_declarator { $$ = makeList1($1); }
+	| init_declarator_list ',' init_declarator { $$ = addLast($1, $3); }
+	;
+
+init_declarator
+	: declarator { $$ = makeAST(INIT_DECL, $1, NULL); }
+	| declarator '=' initializer { $$ = makeAST(INIT_DECL, $1, $3); }
+	;
+
+storage_class_specifier
+	: TYPEDEF { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| EXTERN { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| STATIC { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| AUTO { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	| REGISTER { $$ = makeAST(STORAGE_CLASS, NULL, NULL); }
+	;
+
+specifier_qualifier_list
+	: type_specifier specifier_qualifier_list { $$ = makeList1($1); $$ = addLast($2, $1); }
+	| type_specifier { $$ = makeList1($1); }
+	| type_qualifier specifier_qualifier_list { $$ = makeList1($1); $$ = addLast($2, $1); }
+	| type_qualifier { $$ = makeList1($1); }
+	;
+
+type_specifier
+	: VOID { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| CHAR { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| SHORT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| INT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| LONG { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| FLOAT { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| DOUBLE { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| SIGNED { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| UNSIGNED { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| BOOL { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| COMPLEX { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| IMAGINARY { $$ = makeAST(TYPE_SPEC, NULL, NULL); }
+	| struct_or_union_specifier { $$ = $1; }
+	| enum_specifier { $$ = $1; }
+	| TYPEDEF_NAME { $$ = $1; }
+	;
+
+struct_or_union_specifier
+	: STRUCT '{' struct_declaration_list '}' { $$ = makeAST(STRUCT_DEF, $3, NULL); }
+	| UNION '{' struct_declaration_list '}' { $$ = makeAST(UNION_DEF, $3, NULL); }
+	| STRUCT IDENTIFIER '{' struct_declaration_list '}' { $$ = makeAST(STRUCT_DEF_ID, $2, $4); }
+	| UNION IDENTIFIER '{' struct_declaration_list '}' { $$ = makeAST(UNION_DEF_ID, $2, $4); }
+	| STRUCT IDENTIFIER { $$ = makeAST(STRUCT_REF, $2, NULL); }
+	| UNION IDENTIFIER { $$ = makeAST(UNION_REF, $2, NULL); }
+	;
+
+struct_declaration_list
+	: struct_declaration { $$ = makeList1($1); }
+	| struct_declaration_list struct_declaration { $$ = addLast($1, $2); }
+	;
+
+struct_declaration
+	: specifier_qualifier_list struct_declarator_list ';' { $$ = makeAST(STRUCT_DECL, $1, $2); }
+	| specifier_qualifier_list ';' { $$ = makeAST(STRUCT_DECL, $1, NULL); }
+	;
+
+struct_declarator_list
+	: struct_declarator { $$ = makeList1($1); }
+	| struct_declarator_list ',' struct_declarator { $$ = addLast($1, $3); }
+	;
+
+struct_declarator
+	: declarator { $$ = $1; }
+	| declarator ':' constant_expression { $$ = makeAST(BITFIELD, $1, $3); }
+	| ':' constant_expression { $$ = makeAST(BITFIELD, NULL, $2); }
+	;
+
+enum_specifier
+	: ENUM '{' enumerator_list '}' { $$ = makeAST(ENUM_DEF, $3, NULL); }
+	| ENUM IDENTIFIER '{' enumerator_list '}' { $$ = makeAST(ENUM_DEF_ID, $2, $4); }
+	| ENUM IDENTIFIER { $$ = makeAST(ENUM_REF, $2, NULL); }
+	;
+
+enumerator_list
+	: enumerator { $$ = makeList1($1); }
+	| enumerator_list ',' enumerator { $$ = addLast($1, $3); }
+	;
+
+enumerator
+	: IDENTIFIER { $$ = $1; }
+	| IDENTIFIER '=' constant_expression { $$ = makeAST(ENUM_ASSIGN, $1, $3); }
+	;
+
+static_assert_declaration
+	: STATIC_ASSERT '(' constant_expression ',' STRING_LITERAL ')' ';' { $$ = makeAST(STATIC_ASSERT, $3, $5); }
+	;
+
+declarator_list
+	: declarator { $$ = makeList1($1); }
+	| declarator_list ',' declarator { $$ = addLast($1, $3); }
+	;
+
+initializer
+	: assignment_expression { $$ = $1; }
+	| '{' initializer_list '}' { $$ = makeAST(INIT_LIST, $2, NULL); }
+	| '{' initializer_list ',' '}' { $$ = makeAST(INIT_LIST, $2, NULL); }
+	;
+
+initializer_list
+	: designation initializer { $$ = makeList1(makeAST(DESIGNATED_INIT, $1, $2)); }
+	| initializer_list ',' designation initializer { $$ = addLast($1, makeAST(DESIGNATED_INIT, $2, $3)); }
+	| initializer_list ',' initializer { $$ = addLast($1, $3); }
+	;
+
+designation
+	: designator_list '=' { $$ = $1; }
+	;
+
+designator_list
+	: designator { $$ = makeList1($1); }
+	| designator_list designator { $$ = addLast($1, $2); }
+	;
+
+designator
+	: '[' constant_expression ']' { $$ = $2; }
+	| '.' IDENTIFIER { $$ = $2; }
+	;
+
+statement
+	: labeled_statement { $$ = $1; }
+	| compound_statement { $$ = $1; }
+	| expression_statement { $$ = $1; }
+	| selection_statement { $$ = $1; }
+	| iteration_statement { $$ = $1; }
+	| jump_statement { $$ = $1; }
+	;
+
+labeled_statement
+	: IDENTIFIER ':' statement { $$ = makeAST(LABEL, $1, $3); }
+	| CASE constant_expression ':' statement { $$ = makeAST(CASE, $2, $4); }
+	| DEFAULT ':' statement { $$ = makeAST(DEFAULT, NULL, $3); }
+	;
+
+compound_statement
+	: '{' '}' { $$ = makeAST(COMPOUND_STMT, NULL, NULL); }
+	| '{' block_item_list '}' { $$ = makeAST(COMPOUND_STMT, $2, NULL); }
+	;
+
+block_item_list
+	: block_item { $$ = makeList1($1); }
+	| block_item_list block_item { $$ = addLast($1, $2); }
+	;
+
+block_item
+	: declaration { $$ = $1; }
+	| statement { $$ = $1; }
+	;
+
+expression_statement
+	: ';' { $$ = makeAST(NULL, NULL, NULL); }
+	| expression ';' { $$ = $1; }
+	;
+
+selection_statement
+	: IF '(' expression ')' statement { $$ = makeAST(IF_STMT, $3, $5); }
+	| IF '(' expression ')' statement ELSE statement { $$ = makeAST(IF_ELSE, $3, makeList2($5, $7)); }
+	| SWITCH '(' expression ')' statement { $$ = makeAST(SWITCH_STMT, $3, $5); }
+	;
+
+iteration_statement
+	: WHILE '(' expression ')' statement { $$ = makeAST(WHILE_STMT, $3, $5); }
+	| DO statement WHILE '(' expression ')' ';' { $$ = makeAST(DO_WHILE, $2, $5); }
+	| FOR '(' expression_statement expression_statement ')' statement { $$ = makeAST(FOR_STMT_2, makeList2($3, $4), $6); }
+	| FOR '(' expression_statement expression_statement expression ')' statement { $$ = makeAST(FOR_STMT, makeList3($3, $4, $5), $7); }
+	;
+
+jump_statement
+	: GOTO IDENTIFIER ';' { $$ = makeAST(GOTO_STATEMENT, $2, NULL); }
+	| CONTINUE ';' { $$ = makeAST(CONTINUE_STATEMENT, NULL, NULL); }
+	| BREAK ';' { $$ = makeAST(BREAK_STATEMENT, NULL, NULL); }
+	| RETURN ';' { $$ = makeAST(RETURN_STATEMENT, NULL, NULL); }
+	| RETURN expression ';' { $$ = makeAST(RETURN_STATEMENT, $2, NULL); }
+	;
+
+translation_unit
+	: external_declaration { $$ = makeList1($1); }
+	| translation_unit external_declaration { $$ = addLast($1, $2); }
+	;
+
+external_declaration
+	: function_definition { $$ = $1; }
+	| declaration { $$ = $1; declareVariable($1->left->sym, $1->right); }
+	;
+
+function_definition
+	: declaration_specifiers declarator declaration_list compound_statement { defineFunction($2->sym, $3, $4); $$ = $2; }
+	| declaration_specifiers declarator compound_statement { defineFunction($2->sym, $2->right, $3); $$ = $2; }
+	;
+
+declaration_list
+	: declaration { $$ = makeList1($1); }
+	| declaration_list declaration { $$ = addLast($1, $2); }
+	;
+
+%%
+#include <stdarg.h>
+void error(char *fmt, ...)
+{
+	fprintf(stderr, "[1m[31m");
+	va_list argp;
+	va_start(argp, fmt);
+	vfprintf(stderr, fmt, argp);
+	va_end(argp);
+	fprintf(stderr, "[0m");
+}
+
+void yyerror(const char *s)
+{
+	extern char *yytext;
+	extern int yylineno;
+	fprintf(stderr, "*** %d: %s near '%s'", yylineno, s, yytext);
+}
+
+int main(int argc, char *argv[])
+{
+	if (argc > 1) {
+		yyin = fopen(argv[1], "r");
+	}
+	/* helpful debug flags when diagnosing hangs */
+	#ifdef DEBUG
+		yydebug = 1;
+	#endif
+	if (yyparse()) {
+		fprintf(stderr, "*** fatal error!");
+		return 1;
+	}
+	return 0;
+}

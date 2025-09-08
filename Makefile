@@ -1,40 +1,66 @@
 # ©2016,2025 YUICHIRO NAKADA
 
-CC = clang
-CFLAGS = -Wall -Os
+# Compilers
+CC_X86 = clang
+#CC_ARM = arm-none-eabi-gcc
+CC_ARM = clang
 LEX = flex
 YACC = yacc -dv
+#YACC = bison -d -v -o y.tab.c
 
-# Default to 64-bit if ARCH is not specified
-ARCH ?= 64
+# Common flags
+CFLAGS = -Wall -Os
 
-# Set executable name and architecture-specific flags
-ifeq ($(ARCH),32)
-    PROGRAM = catc32
-    CFLAGS += -m32
-    OBJS = y.tab.o AST.o reg_compile.o x86_code_gen.o
-else
-    PROGRAM = catc
-    CFLAGS += -m64
-    OBJS = y.tab.o AST.o reg_compile.o x86_64_code_gen.o
-endif
+# Architecture-specific settings
+#CFLAGS_X86_32 = $(CFLAGS) -m32
+#CFLAGS_X86_64 = $(CFLAGS) -m64
+#CFLAGS_ARM = $(CFLAGS) -march=armv7-a
+CFLAGS_X86_32 = $(CFLAGS)
+CFLAGS_X86_64 = $(CFLAGS)
+CFLAGS_ARM = $(CFLAGS)
 
-#OBJS = y.tab.o AST.o reg_compile.o x86_code_gen.o
+# Object files
+COMMON_OBJS = y.tab.o AST.o reg_compile.o
+OBJS_X86_32 = $(COMMON_OBJS) code_gen_x86.o
+OBJS_X86_64 = $(COMMON_OBJS) code_gen_x86_64.o
+OBJS_ARM = $(COMMON_OBJS) code_gen_arm.o
 
-.SUFFIXES: .c .o
+# Executable names
+PROGRAM_X86_32 = catc32
+PROGRAM_X86_64 = catc
+PROGRAM_ARM = catc_arm
 
-$(PROGRAM): $(OBJS)
-	$(CC) $(CFLAGS) -o $(PROGRAM) $^
+# Default target: build all executables
+all: $(PROGRAM_X86_32) $(PROGRAM_X86_64) $(PROGRAM_ARM)
 
+# Rules for each executable
+$(PROGRAM_X86_32): $(OBJS_X86_32)
+	$(CC_X86) $(CFLAGS_X86_32) -o $@ $^
+
+$(PROGRAM_X86_64): $(OBJS_X86_64)
+	$(CC_X86) $(CFLAGS_X86_64) -o $@ $^
+
+$(PROGRAM_ARM): $(OBJS_ARM)
+	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^
+
+# Compile source files to object files
 .c.o:
-	$(CC) $(CFLAGS) -c $<
+	$(CC_X86) $(CFLAGS) -c $< -o $@
 
+# ARM-specific object compilation
+arm_code_gen.o: arm_code_gen.c
+	$(CC_ARM) $(CFLAGS_ARM) -c $< -o $@
+
+# Lexer and parser
 lex.yy.c: clex.l
 	$(LEX) clex.l
+
 y.tab.c: cparser.y
 	$(YACC) cparser.y
+
 y.tab.o: cparser.y lex.yy.c
 
+# Clean rule
 .PHONY: clean
 clean:
-	$(RM) catc catc32 $(OBJS) lex.yy.c y.tab.[ch] y.output *.o *.s
+	$(RM) $(PROGRAM_X86_32) $(PROGRAM_X86_64) $(PROGRAM_ARM) $(COMMON_OBJS) $(OBJS_X86_32) $(OBJS_X86_64) $(OBJS_ARM) lex.yy.c y.tab.[ch] y.output *.o *.s

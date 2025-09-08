@@ -55,6 +55,11 @@ $ ./catc -S ./test/hello.c > ./test/hello.asm
 $ as ./test/hello.asm -o ./test/hello.o
 ```
 
+```bash
+$ ./catc32 -S ./test/hello.c > ./test/hello.asm
+$ as --32 ./test/hello.asm -o ./test/hello.o
+```
+
 - Link and run the program:
 ```bash
 $ gcc ./test/hello.o -o ./test/hello
