@@ -12,5 +12,9 @@ echo -----
 ./test/test02
 echo -----
 
+rm ./test/*.s
+rm ./test/hello
+rm ./test/test01
+rm ./test/test02
 #rm ./test/*.o
 

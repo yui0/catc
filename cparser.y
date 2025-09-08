@@ -241,7 +241,7 @@ constant_expression
 declaration
 	: declaration_specifiers ';'
 	| declaration_specifiers init_declarator_list ';'
-	  { $2->left->sym->type = $1; $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }	// int a = 0;
+	  { $2->left->sym->type = (int)$1; $$ = $2; /*printf("[%s]\n",$2->left->sym->name);*/ }	// int a = 0;
 	| static_assert_declaration
 	;
 
@@ -623,7 +623,7 @@ void error(char *fmt, ...)
 
 // retrieve from '# digits text'
 static char *source; // current input file name
-yymark()
+void yymark()
 {
 	if (source) free(source);
 	source = (char *)calloc(yyleng, sizeof(char));

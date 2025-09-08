@@ -105,6 +105,7 @@ void compileBlock(AST *local_vars, AST *statements)
 	envp = envp_save;
 }
 
+int compileArgs(AST *args, int i);
 void compileCallFunc(int target, Symbol *f, AST *args)
 {
 	int narg = compileArgs(args, 0);

@@ -3,6 +3,8 @@
 #include <sys/utsname.h>
 #include "reg_code.h"
 
+void error(char *fmt, ...);
+
 #define MAX_CODE 100
 
 extern FILE *yyout;

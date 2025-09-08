@@ -55,6 +55,8 @@ AST *makeSymbol(char *name);
 Symbol *lookupSymbol(char *name);
 Symbol *getSymbol(AST *p);
 
+void printAST(AST *p);
+
 AST *makeNum(int val);
 AST *makeStr(char *s);
 AST *makeAST(enum code op, AST *right, AST *left);
