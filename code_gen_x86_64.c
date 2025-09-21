@@ -1,3 +1,4 @@
+// ©2025 Yuichiro Nakada
 #include <stdio.h>
 #include <string.h>
 #include <sys/utsname.h>

@@ -28,8 +28,36 @@ $ make 🔨
 ```bash
 $ ./catc -S ./test/hello.c
 	.section	.rodata
-.LC0:
-	.string	"Hello! tiny c world!!\n"
+.LC0:	.string	"Hello! tiny C world!!\n"
+	.text
+	.align	16
+	.globl	main
+	.type	main,@function
+main:
+	pushq	%rbp
+	movq	%rsp,%rbp
+	subq	$64,%rsp
+	movq	%rbx,-8(%rbp)
+	leaq	.LC0(%rip),%rax
+	movq	%rax,%rdi
+	call	printf
+	movq	$0,%rax
+	jmp	.L1
+.L1:	movq	-8(%rbp),%rbx
+	leave
+	ret
+```
+
+- Assemble the output:
+```bash
+$ ./catc -S ./test/hello.c > ./test/hello.asm
+$ as ./test/hello.asm -o ./test/hello.o
+```
+
+```bash
+$ ./catc32 -S ./test/hello.c
+	.section	.rodata
+.LC0:	.string	"Hello! tiny C world!!\n"
 	.text
 	.align	4
 	.global	main
@@ -47,17 +75,64 @@ main:
 .L1:	movl	-4(%ebp),%ebx
 	leave
 	ret
-```
 
-- Assemble the output:
-```bash
-$ ./catc -S ./test/hello.c > ./test/hello.asm
-$ as ./test/hello.asm -o ./test/hello.o
-```
-
-```bash
 $ ./catc32 -S ./test/hello.c > ./test/hello.asm
 $ as --32 ./test/hello.asm -o ./test/hello.o
+```
+
+```bash
+$ ./catc_arm -S ./test/hello.c
+	.section	.rodata
+.LC0:
+	.asciz	"Hello! tiny C world!!\n"
+	.text
+	.align	2
+	.global	main
+	.type	main, %function
+main:
+	push	{fp, lr}
+	add	fp, sp, #4
+	sub	sp, sp, #24
+	str	r4, [fp, #-8]
+	ldr	r0, =.LC0
+	mov	r0, r0
+	bl	printf
+	mov	r0, #0
+	b	.L0
+.L0:
+	ldr	r4, [fp, #-8]
+	sub	sp, fp, #4
+	pop	{fp, pc}
+```
+
+```bash
+$ ./catc_wasm -S ./test/hello.c
+(func $main (export "main") (param i64) (result i64)
+  (local i64)
+  (local i64)
+  (local $pc i32)
+  i32.const 2147483646
+  local.set $pc
+  loop $big_loop
+    local.get $pc
+    i32.const 2147483646
+    i32.eq
+    if
+      i32.const 0
+      i64.extend_i32_u
+      local.set 1
+      local.get 1
+      call $printf
+      i64.const 0
+      local.set 2
+      local.get 2
+      return
+    end
+    br $big_loop
+  end
+  i64.const 0
+  return
+)
 ```
 
 - Link and run the program:

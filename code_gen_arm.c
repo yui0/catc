@@ -1,3 +1,4 @@
+// ©2025 Yuichiro Nakada
 #include <stdio.h>
 #include <string.h>
 #include <sys/utsname.h>
@@ -365,11 +366,11 @@ int genString(char *s)
     if (isDarwin) {
         fprintf(yyout, "\t.section\t__TEXT,__cstring,cstring_literals\n");
         fprintf(yyout, ".LC%d:\n", l);
-        fprintf(yyout, "\t.asciz\t\"%s\"\n", s);
+        fprintf(yyout, "\t.asciz\t%s\n", s);
     } else {
         fprintf(yyout, "\t.section\t.rodata\n");
         fprintf(yyout, ".LC%d:\n", l);
-        fprintf(yyout, "\t.asciz\t\"%s\"\n", s);
+        fprintf(yyout, "\t.asciz\t%s\n", s);
     }
     return l;
 }
